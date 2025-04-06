@@ -6,6 +6,7 @@ import yfinance as yf
 from sklearn.preprocessing import MinMaxScaler
 from keras import Sequential
 from keras.layers import Dense, LSTM, Dropout, AdditiveAttention, Permute, Reshape, Multiply, Attention, Flatten, Dropout, Activation, BatchNormalization
+from keras.callbacks import EarlyStopping
 from datetime import datetime
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import matplotlib.pyplot as plt
@@ -17,7 +18,7 @@ import asyncio
 # main check
 if __name__ == "__main__":
 
-    for Ticker in ['USDC-EUR', 'MXN=X', 'BTC-USD', 'ETH-USD']:
+    for Ticker in ['USDC-EUR', 'MXN=X', 'BTC-USD', 'ETH-USD', 'PAXG-USD', 'NASDAQ']:
     # for Ticker in ['BTC-USD', 'ETH-USD']:
         # Download the data1
         data = yf.download(Ticker, period='6y', interval='1d')
@@ -140,11 +141,13 @@ if __name__ == "__main__":
         # Final Dense Layer
         model.add(Dense(units=1))
 
+
+        early_stopping = EarlyStopping(monitor='val_loss', patience=10)
         # compile the model
         model.compile(optimizer='adam', loss='mean_squared_error')
 
         # train the model
-        model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split=0.2)
+        model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split=0.2, callbacks=[early_stopping])
 
         print(model.summary())
 
@@ -196,8 +199,36 @@ if __name__ == "__main__":
         # Save plot as image to send it to the user
         image_name = f'{Ticker}_predictions.png'
         plt.savefig(image_name)
-        plt.show()
+        # plt.show()
         plt.close()
+
+        # Send the image to Telegram# Creating a list of dates for the predictions
+        last_date = data.index[-1]
+        next_day = last_date + pd.Timedelta(days=1)
+        prediction_dates = pd.date_range(start=next_day, periods=10)
+
+        # Adding predictions to the DataFrame
+        predicted_data = pd.DataFrame(index=prediction_dates, data=predicted_prices, columns=['Close'])
+
+        # Combining both actual and predicted data
+        combined_data = pd.concat([data['Close'], predicted_data['Close']])
+        combined_data = combined_data[-64:] # Last 60 days of actual data + 4 days of predictions
+
+        # Plotting the actual data
+        plt.figure(figsize=(10,6))
+        plt.plot(data.index[-60:], data['Close'][-60:], linestyle='-', marker='o', color='blue', label='Actual Data')
+
+        # Plotting the predicted data
+        plt.plot(prediction_dates, predicted_prices, linestyle='-', marker='o', color='red', label='Predicted Data')
+
+        plt.title(f"{Ticker} Stock Price: Last 60 Days and Next 4 Days Predicted")
+        plt.xlabel('Date')
+        plt.ylabel('Price')
+        plt.legend()
+        image_name_full = f'full {Ticker}_predictions.png'
+        plt.savefig(image_name_full)
+        plt.close()
+        # plt.show()
 
         asyncio.run(send_telegram(f'Here are the next 10 days predictions for {Ticker} stock prices.'))
         asyncio.run(send_telegram(f'Predicted Stock Prices for the next 10 days: {predicted_prices}'))
@@ -205,6 +236,7 @@ if __name__ == "__main__":
         asyncio.run(send_telegram(f'Root Mean Square Error: % {rmse*100}'))
         asyncio.run(send_telegram(f'Here is the plot:'))
         asyncio.run(send_image_to_telegram(image_name, caption='Predicted Stock Prices for the next 10 days'))
+        asyncio.run(send_image_to_telegram(image_name_full, caption='Predicted Stock Prices for the next 10 days'))
 
 
 
