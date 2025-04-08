@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fcd45e9e-c484-400f-b4b4-7307aee1e49e" name="Changes" comment="chore: adding smape and mase values for evaluaiton">
+    <list default="true" id="fcd45e9e-c484-400f-b4b4-7307aee1e49e" name="Changes" comment="chore: adding more Tickers and propper label translation">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
@@ -78,7 +78,7 @@
       <updated>1743639053780</updated>
       <workItem from="1743639054769" duration="69000" />
       <workItem from="1743639128934" duration="9076000" />
-      <workItem from="1743809652490" duration="8225000" />
+      <workItem from="1743809652490" duration="8899000" />
     </task>
     <task id="LOCAL-00001" summary="first commit, working changes and to prod">
       <option name="closed" value="true" />
@@ -112,7 +112,31 @@
       <option name="project" value="LOCAL" />
       <updated>1744134912205</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="chore: adding more Tickers and propper label translation">
+      <option name="closed" value="true" />
+      <created>1744135498164</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1744135498164</updated>
+    </task>
+    <task id="LOCAL-00006" summary="chore: adding propper percentage foramt">
+      <option name="closed" value="true" />
+      <created>1744135714130</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1744135714130</updated>
+    </task>
+    <task id="LOCAL-00007" summary="chore: fixing issues">
+      <option name="closed" value="true" />
+      <created>1744136069428</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1744136069428</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -134,10 +158,13 @@
     <MESSAGE value="chore: appending more plots and markers" />
     <MESSAGE value="chore: avoinding second download" />
     <MESSAGE value="chore: adding smape and mase values for evaluaiton" />
-    <option name="LAST_COMMIT_MESSAGE" value="chore: adding smape and mase values for evaluaiton" />
+    <MESSAGE value="chore: adding more Tickers and propper label translation" />
+    <MESSAGE value="chore: adding propper percentage foramt" />
+    <MESSAGE value="chore: fixing issues" />
+    <option name="LAST_COMMIT_MESSAGE" value="chore: fixing issues" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/LSTM_Forecast$main.coverage" NAME="main Coverage Results" MODIFIED="1743983351331" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/LSTM_Forecast$main.coverage" NAME="main Coverage Results" MODIFIED="1744136075250" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/LSTM_Forecast$traceback_utils.coverage" NAME="traceback_utils Coverage Results" MODIFIED="1743643307416" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$USER_HOME$/anaconda3/lib/python3.12/site-packages/keras/src/utils" />
   </component>
 </project>
