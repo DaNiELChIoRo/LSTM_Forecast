@@ -4,8 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fcd45e9e-c484-400f-b4b4-7307aee1e49e" name="Changes" comment="chore: appending more plots and markers">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    <list default="true" id="fcd45e9e-c484-400f-b4b4-7307aee1e49e" name="Changes" comment="chore: avoinding second download">
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -78,7 +77,7 @@
       <updated>1743639053780</updated>
       <workItem from="1743639054769" duration="69000" />
       <workItem from="1743639128934" duration="9076000" />
-      <workItem from="1743809652490" duration="7109000" />
+      <workItem from="1743809652490" duration="7449000" />
     </task>
     <task id="LOCAL-00001" summary="first commit, working changes and to prod">
       <option name="closed" value="true" />
@@ -96,7 +95,15 @@
       <option name="project" value="LOCAL" />
       <updated>1743982468158</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="chore: avoinding second download">
+      <option name="closed" value="true" />
+      <created>1744134438637</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1744134438637</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -116,7 +123,8 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="first commit, working changes and to prod" />
     <MESSAGE value="chore: appending more plots and markers" />
-    <option name="LAST_COMMIT_MESSAGE" value="chore: appending more plots and markers" />
+    <MESSAGE value="chore: avoinding second download" />
+    <option name="LAST_COMMIT_MESSAGE" value="chore: avoinding second download" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/LSTM_Forecast$main.coverage" NAME="main Coverage Results" MODIFIED="1743983351331" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

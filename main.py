@@ -29,7 +29,8 @@ if __name__ == "__main__":
 
         mae = None
         rmse = None
-
+        smape_value = None
+        mase_value = None
 
         async def send_telegram(message):
             # Telegram Bot Token (Replace with your own bot token)
@@ -77,10 +78,10 @@ if __name__ == "__main__":
                 print(f"Error sending image: {e}")
 
         # Create the dataset
-        def create_dataset(data, look_back=1):
+        def create_dataset(data, days_range=60):
             X, y = [], []
-            for i in range(60, len(data)):
-                X.append(data[i - 60:i, 0])
+            for i in range(days_range, len(data)):
+                X.append(data[i - days_range:i, 0])
                 y.append(data[i, 0])
             return np.array(X), np.array(y)
 
@@ -93,6 +94,19 @@ if __name__ == "__main__":
             X_train, y_train = np.array(X_train), np.array(y_train)
             X_train = np.reshape(X_train, (X_train.shape[0], X_train.shape[1], 1))
             return X_train, y_train, X_test, y_test
+
+        def smape(X, y):
+            X = np.array(X)
+            y = np.array(y)
+            return np.mean(np.abs((X - y) / ((np.abs(X) + np.abs(y)) / 2))) * 100
+
+        def mase(y_true, y_pred, y_train):
+            # Calculate the mean absolute error of the training data
+            mae_train = np.mean(np.abs(y_train - np.mean(y_train)))
+            # Calculate the mean absolute error of the test data
+            mae_test = np.mean(np.abs(y_true - y_pred))
+            # Calculate the MASE
+            return mae_test / mae_train
 
         def evalModel(model, X_test, y_test):
             global mae, rmse
@@ -112,9 +126,13 @@ if __name__ == "__main__":
 
             mae = mean_absolute_error(y_test, y_pred)
             rmse = mean_squared_error(y_test, y_pred)
+            smape_value = smape(y_test, y_pred)
+            mase_value = mase(y_test, y_pred, y_train)
 
             print("Mean Absolute Error: ", mae)
             print("Root Mean Square Error: ", rmse)
+            print("Symmetric Mean Absolute Percentage Error: ", smape_value)
+            print("Mean Absolute Scaled Error: ", mase_value)
 
 
         X, y = create_dataset(scaled_data)
@@ -233,8 +251,10 @@ if __name__ == "__main__":
 
         asyncio.run(send_telegram(f'Here are the next 10 days predictions for {Ticker} stock prices.'))
         asyncio.run(send_telegram(f'Predicted Stock Prices for the next 10 days: {predicted_prices}'))
-        asyncio.run(send_telegram(f'Mean Absolute Error: % {mae*100}'))
-        asyncio.run(send_telegram(f'Root Mean Square Error: % {rmse*100}'))
+        asyncio.run(send_telegram(f'Mean Absolute Error: %  \033[1m{mae*100}'))
+        asyncio.run(send_telegram(f'Mean Absolute Scaled Error: % \033[1m{mase_value*100}'))
+        asyncio.run(send_telegram(f'Symmetric Mean Absolute Percentage Error: % \033[1m{smape_value*100}'))
+        asyncio.run(send_telegram(f'Root Mean Square Error: % \033[1m{rmse*100}'))
         asyncio.run(send_telegram(f'Here is the plot:'))
         asyncio.run(send_image_to_telegram(image_name, caption='Predicted Stock Prices for the next 10 days'))
         asyncio.run(send_image_to_telegram(image_name_full, caption='Predicted Stock Prices for the next 10 days'))
