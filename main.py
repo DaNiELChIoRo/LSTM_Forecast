@@ -18,10 +18,10 @@ import asyncio
 # main check
 if __name__ == "__main__":
 
-    for Ticker in ['USDC-EUR', 'MXN=X', 'BTC-USD', 'ETH-USD', 'PAXG-USD', 'NASDAQ']:
-    # for Ticker in ['BTC-USD', 'ETH-USD']:
+    for Ticker in ['USDC-EUR', 'MXN=X', 'BTC-USD', 'ETH-USD', 'PAXG-USD', '^IXIC']:
+    # for Ticker in ['^IXIC']:
         # Download the data1
-        data = yf.download(Ticker, period='6y', interval='1d')
+        data = yf.download(Ticker, period='6y', interval='1d', timeout=20)
         # data.to_csv(f'data/{Ticker}_tickers.csv')
         # Normalize the data
         scaler = MinMaxScaler(feature_range=(0, 1))
@@ -154,7 +154,8 @@ if __name__ == "__main__":
         evalModel(model, X_test, y_test)
 
         # Fetching the latest 60 days of AAPL stock data
-        data = yf.download(Ticker, period='61d', interval='1d')
+        data = data.iloc[-60:]  # Get the last 60 days of data
+        # yf.download(Ticker, period='61d', interval='1d')
 
         # Selecting the 'Close' price and converting to numpy array
         closing_prices = data['Close'].values
