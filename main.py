@@ -18,7 +18,7 @@ import asyncio
 # main check
 if __name__ == "__main__":
 
-    for Ticker in ['USDC-EUR', 'MXN=X', 'BTC-USD', 'ETH-USD', 'PAXG-USD', '^IXIC']:
+    for Ticker in ['USDC-EUR', 'MXN=X', '^MXX', 'BTC-USD', 'ETH-USD', 'PAXG-USD', '^IXIC', '^SP500-45']:
     # for Ticker in ['^IXIC']:
         # Download the data1
         data = yf.download(Ticker, period='6y', interval='1d', timeout=20)
@@ -239,6 +239,14 @@ if __name__ == "__main__":
 
         # Plotting the predicted data
         plt.plot(prediction_dates, predicted_prices, linestyle='-', marker='o', color='red', label='Predicted Data')
+        if Ticker == '^IXIC':
+            Ticker = 'NASDAQ Composite'
+        if Ticker == '^MXX':
+            Ticker = 'IPC MEXICO'
+        if Ticker == '^MXN=X':
+            Ticker = 'USD/MXN'
+        if Ticker == '^SP500-45':
+            Ticker = 'S&P 500 - Information Technology'
 
         plt.title(f"{Ticker} Stock Price: Last 60 Days and Next 4 Days Predicted")
         plt.xlabel('Date')
