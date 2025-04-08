@@ -109,7 +109,7 @@ if __name__ == "__main__":
             return mae_test / mae_train
 
         def evalModel(model, X_test, y_test):
-            global mae, rmse
+            global mae, rmse, mase_value, smape_value
             # Convert X_test and y_test to Numpy arrays if they are not already
             X_test = np.array(X_test)
             y_test = np.array(y_test)
