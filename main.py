@@ -32,51 +32,6 @@ if __name__ == "__main__":
         smape_value = None
         mase_value = None
 
-        async def send_telegram(message):
-            # Telegram Bot Token (Replace with your own bot token)
-            BOT_TOKEN = '6774919345:AAEdbuOoggOwp8IqfuQky1tL97i4HXBFY-M'
-
-            # Chat ID (Replace with your own chat ID)
-            CHAT_ID = '-1002687756429' #'955478477'
-            # CHAT_ID = '955478477'
-
-            # Initialize the Telegram bot
-            bot = telegram.Bot(token=BOT_TOKEN)
-
-            try:
-                await bot.send_message(chat_id=CHAT_ID, text=message)
-                print("Telegram message sent successfully.")
-            except Exception as e:
-                print(f"An error occurred: {str(e)}")
-            return True
-
-
-        async def send_image_to_telegram(image_path, caption=None):
-            """
-            Sends an image to a Telegram chat.
-
-            Args:
-                bot_token: The API token of your Telegram bot.
-                chat_id: The ID of the chat to send the image to.
-                image_path: The file path of the image to send.
-                caption: (Optional) A caption to include with the image.
-            """
-
-            bot_token = '6774919345:AAEdbuOoggOwp8IqfuQky1tL97i4HXBFY-M'
-            chat_id = '-1002687756429' #'955478477'
-            # chat_id = '955478477'
-            try:
-                bot = telegram.Bot(token=bot_token)
-                async with bot:
-                    if caption:
-                        await bot.send_photo(chat_id=chat_id, photo=open(image_path, 'rb'), caption=caption)
-                    else:
-                        await bot.send_photo(chat_id=chat_id, photo=open(image_path, 'rb'))
-                print("Image sent successfully!")
-
-            except Exception as e:
-                print(f"Error sending image: {e}")
-
         # Create the dataset
         def create_dataset(data, days_range=60):
             X, y = [], []
