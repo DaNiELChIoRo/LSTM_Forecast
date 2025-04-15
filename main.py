@@ -14,6 +14,14 @@ import asyncio
 
 # main check
 if __name__ == "__main__":
+    best_mae = None
+    best_batch_size = None
+    best_epoch = None
+    best_activation_function = None
+    best_loss_function = None
+    best_mase_value = None
+    best_smape_value = None
+    best_rmse_value = None
 
     # for Ticker in ['USDC-EUR', 'MXN=X', '^MXX', 'BTC-USD', 'ETH-USD', 'PAXG-USD', '^IXIC', '^SP500-45']:
     for Ticker in ['PAXG-USD']:
@@ -89,132 +97,66 @@ if __name__ == "__main__":
 
         X, y = create_dataset(scaled_data)
         X_train, y_train, X_test, y_test = split_data(X, y)
+        for loss_func in ['mean_squared_error', 'mean_absolute_error', 'mean_absolute_percentage_error']:
+            for activation_func in ['relu', 'sigmoid', 'tanh', 'softmax', 'linear']:
+                for batch_size in [16, 32, 64]:
+                    for epoch in [25, 50, 75, 100]:
+                        # Build the LSTM model
+                        model = Sequential()
 
-        # Build the LSTM model
-        model = Sequential()
+                        model.add(Bidirectional(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+                        model.add(Bidirectional(LSTM(units=100, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+                        model.add(Bidirectional(LSTM(units=150, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+                        model.add(Bidirectional(LSTM(units=100, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+                        model.add(Bidirectional(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1))))
 
-        model.add(Bidirectional(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1))))
-        model.add(Bidirectional(LSTM(units=100, return_sequences=True, input_shape=(X_train.shape[1], 1))))
-        model.add(Bidirectional(LSTM(units=150, return_sequences=True, input_shape=(X_train.shape[1], 1))))
-        model.add(Bidirectional(LSTM(units=100, return_sequences=True, input_shape=(X_train.shape[1], 1))))
-        model.add(Bidirectional(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+                        model.add(Dropout(0.2))
+                        model.add(Activation(activation_func))
+                        model.add(BatchNormalization())
+                        model.add(Bidirectional(LSTM(units=50, return_sequences=True)))
+                        # The attention mechanism
+                        attention = AdditiveAttention(name="attention_weight")
 
-        model.add(Dropout(0.2))
-        model.add(Activation('relu'))
-        model.add(BatchNormalization())
-        model.add(Bidirectional(LSTM(units=50, return_sequences=True)))
-        # The attention mechanism
-        attention = AdditiveAttention(name="attention_weight")
+                        model.add(Flatten())
 
-        model.add(Flatten())
-
-        # Final Dense Layer
-        model.add(Dense(units=1))
+                        # Final Dense Layer
+                        model.add(Dense(units=1))
 
 
-        early_stopping = EarlyStopping(monitor='val_loss', patience=10)
-        # compile the model
-        model.compile(optimizer='adam', loss='mean_squared_error')
+                        early_stopping = EarlyStopping(monitor='val_loss', patience=10)
+                        # compile the model
+                        model.compile(optimizer='adam', loss=loss_func)
 
-        # train the model
-        model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split=0.2, callbacks=[early_stopping])
+                        # train the model
+                        model.fit(X_train, y_train, epochs=epoch, batch_size=batch_size, validation_split=0.2, callbacks=[early_stopping])
 
-        print(model.summary())
+                        evalModel(model, X_test, y_test)
 
-        evalModel(model, X_test, y_test)
+                        if best_mae is None or mae < best_mae:
+                            best_mae = mae
+                            best_batch_size = batch_size
+                            best_epoch = epoch
+                            best_activation_function = activation_func
+                            best_loss_function = loss_func
+                            best_mase_value  = mase_value
+                            best_smape_value = smape_value
+                            best_rmse_value  = rmse
 
-        # # Fetching the latest 60 days of AAPL stock data
-        # data = data.iloc[-60:]  # Get the last 60 days of data
-        # # yf.download(Ticker, period='61d', interval='1d')
-        #
-        # # Selecting the 'Close' price and converting to numpy array
-        # closing_prices = data['Close'].values
-        #
-        # # Scaling the data
-        # scaler = MinMaxScaler(feature_range=(0, 1))
-        # scaled_data = scaler.fit_transform(closing_prices.reshape(-1, 1))
-        #
-        # # Predict the next 10 days iteratively
-        # predicted_prices = []
-        # current_batch = scaled_data[-60:].reshape(1, 60, 1)  # Most recent 60 days
-        #
-        # for i in range(10):  # Predicting 10 days
-        #     # Get the prediction (next day)
-        #     next_prediction = model.predict(current_batch)
-        #
-        #     # Reshape the prediction to fit the batch dimension
-        #     next_prediction_reshaped = next_prediction.reshape(1, 1, 1)
-        #
-        #     # Append the prediction to the batch used for predicting
-        #     current_batch = np.append(current_batch[:, 1:, :], next_prediction_reshaped, axis=1)
-        #
-        #     # Inverse transform the prediction to the original price scale
-        #     predicted_prices.append(scaler.inverse_transform(next_prediction)[0, 0])
-        #
-        # print("Predicted Stock Prices for the next 10 days: ", predicted_prices)
-        #
-        # # Creating a list of dates for the predictions
-        # last_date = data.index[-1]
-        # next_day = last_date + pd.Timedelta(days=1)
-        # prediction_dates = pd.date_range(start=next_day, periods=10)
-        #
-        # # Assuming 'predicted_prices' is your list of predicted prices for the next 4 days
-        # predictions_df = pd.DataFrame(index=prediction_dates, data=predicted_prices, columns=['Close'])
-        #
-        # # # Overlaying the predicted data
-        # plt.figure(figsize=(10, 6))
-        # plt.plot(predictions_df.index, predictions_df['Close'], linestyle='dashed', marker='o', color='red')
-        # plt.title(f'{Ticker} Stock Price Prediction')
-        # plt.xticks(rotation=90)
-        #
-        # # Save plot as image to send it to the user
-        # image_name = f'{Ticker}_predictions.png'
-        # plt.savefig(image_name)
-        # # plt.show()
-        # plt.close()
+                        del model
 
-        # Send the image to Telegram# Creating a list of dates for the predictions
-        # last_date = data.index[-1]
-        # next_day = last_date + pd.Timedelta(days=1)
-        # prediction_dates = pd.date_range(start=next_day, periods=10)
-        #
-        # # Adding predictions to the DataFrame
-        # predicted_data = pd.DataFrame(index=prediction_dates, data=predicted_prices, columns=['Close'])
-        #
-        # # Combining both actual and predicted data
-        # combined_data = pd.concat([data['Close'], predicted_data['Close']])
-        # combined_data = combined_data[-64:] # Last 60 days of actual data + 4 days of predictions
-        #
-        # # Plotting the actual data
-        # plt.figure(figsize=(10,6))
-        # plt.plot(data.index[-60:], data['Close'][-60:], linestyle='-', marker='o', color='blue', label='Actual Data')
-        #
-        # # Plotting the predicted data
-        # plt.plot(prediction_dates, predicted_prices, linestyle='-', marker='o', color='red', label='Predicted Data')
-        # if Ticker == '^IXIC':
-        #     Ticker = 'NASDAQ Composite'
-        # if Ticker == '^MXX':
-        #     Ticker = 'IPC MEXICO'
-        # if Ticker == 'MXN=X':
-        #     Ticker = 'USD/MXN'
-        # if Ticker == '^SP500-45':
-        #     Ticker = 'S&P 500 - Information Technology'
-        #
-        # plt.title(f"{Ticker} Stock Price: Last 60 Days and Next 4 Days Predicted")
-        # plt.xlabel('Date')
-        # plt.ylabel('Price')
-        # plt.legend()
-        # image_name_full = f'full {Ticker}_predictions.png'
-        # plt.savefig(image_name_full)
-        # plt.close()
-        # plt.show()
+
 
         # asyncio.run(send_telegram(f'Here are the next 10 days predictions for {Ticker} stock prices.'))
         # asyncio.run(send_telegram(f'Predicted Stock Prices for the next 10 days: {predicted_prices}'))
-        asyncio.run(send_telegram(f'Mean Absolute Error: %<b>{mae*100:.2f}</b>\n\
-                                    Mean Absolute Scaled Error: %<b>{mase_value*100:.2f}</b>\n\
-                                    Symmetric Mean Absolute Percentage Error: %<b>{smape_value*100:.2f}</b>\n\
-                                    Root Mean Square Error: %<b>{rmse*100:.2f}</b>'))
+        asyncio.run(send_telegram(f'Best Mean Absolute Error: %<b>{best_mae*100:.2f}</b>\n\
+        Best Mean Absolute Scaled Error: %<b>{best_mase_value*100:.2f}</b>\n\
+        Best Symmetric Mean Absolute Percentage Error: %<b>{best_smape_value*100:.2f}</b>\n\
+        Best Root Mean Square Error: %<b>{best_rmse_value*100:.2f}</b>\n\
+        Best Batch Size: <b>{best_batch_size}</b>\n\
+        Best Epoch: <b>{best_epoch}</b>\n\
+        Best Activation Function: <b>{best_activation_function}</b>\n\
+        Best Loss Function: <b>{best_loss_function}</b>\n\
+        '))
         # asyncio.run(send_telegram(f'Here is the plot:'))
         # asyncio.run(send_image_to_telegram(image_name, caption='Predicted Stock Prices for the next 10 days'))
         # asyncio.run(send_image_to_telegram(image_name_full, caption='Predicted Stock Prices for the next 10 days'))
