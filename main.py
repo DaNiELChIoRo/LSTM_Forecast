@@ -1,16 +1,13 @@
 import pandas as pd
 import numpy as np
-import tensorflow
-import keras
 import yfinance as yf
 from sklearn.preprocessing import MinMaxScaler
 from keras import Sequential
 from keras.layers import Dense, LSTM, Dropout, AdditiveAttention, Permute, Reshape, Multiply, Attention, Flatten, Dropout, Activation, BatchNormalization
 from keras.callbacks import EarlyStopping
-from datetime import datetime
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import matplotlib.pyplot as plt
-import telegram
+from telegram_sender import send_telegram, send_image_to_telegram
 import asyncio
 
 
