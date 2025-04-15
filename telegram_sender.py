@@ -23,7 +23,7 @@ async def send_telegram(message):
         print(f"An error occurred: {str(e)}")
     return True
 
- async def send_image_to_telegram(image_path, caption=None):
+async def send_image_to_telegram(image_path, caption=None):
             """
             Sends an image to a Telegram chat.
 
