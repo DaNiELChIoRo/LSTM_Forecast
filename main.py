@@ -116,10 +116,11 @@ if __name__ == "__main__":
 
         early_stopping = EarlyStopping(monitor='val_loss', patience=10)
         # compile the model
-        model.compile(optimizer='adam', loss='mean_squared_error')
+        model.compile(optimizer='adam', loss='mean_percent_error', metrics=['mean_absolute_error', 'mean_squared_error'])
 
         # train the model
-        model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split=0.2, callbacks=[early_stopping])
+        model.fit(X_train, y_train, epochs=100, batch_size=32,
+                  validation_split=0.2, callbacks=[early_stopping])
 
         print(model.summary())
 
