@@ -3,7 +3,7 @@ import numpy as np
 import yfinance as yf
 from sklearn.preprocessing import MinMaxScaler
 from keras import Sequential
-from keras.layers import Dense, LSTM, Dropout, AdditiveAttention, Permute, Reshape, Multiply, Attention, Flatten, Dropout, Activation, BatchNormalization
+from keras.layers import Dense, LSTM, Bidirectional,  Dropout, AdditiveAttention, Permute, Reshape, Multiply, Attention, Flatten, Dropout, Activation, BatchNormalization
 from keras.callbacks import EarlyStopping
 from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
 import matplotlib.pyplot as plt
@@ -95,11 +95,11 @@ if __name__ == "__main__":
         # Build the LSTM model
         model = Sequential()
 
-        model.add(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1)))
-        model.add(LSTM(units=100, return_sequences=True, input_shape=(X_train.shape[1], 1)))
-        model.add(LSTM(units=150, return_sequences=True, input_shape=(X_train.shape[1], 1)))
-        model.add(LSTM(units=100, return_sequences=True, input_shape=(X_train.shape[1], 1)))
-        model.add(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1)))
+        model.add(Bidirectional(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+        model.add(Bidirectional(LSTM(units=100, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+        model.add(Bidirectional(LSTM(units=150, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+        model.add(Bidirectional(LSTM(units=100, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+        model.add(Bidirectional(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1))))
 
         model.add(Dropout(0.2))
         model.add(Activation('relu'))
@@ -116,7 +116,8 @@ if __name__ == "__main__":
 
         early_stopping = EarlyStopping(monitor='val_loss', patience=10)
         # compile the model
-        model.compile(optimizer='adam', loss='mean_percent_error', metrics=['mean_absolute_error', 'mean_squared_error'])
+        model.compile(optimizer='adam', loss='mean_absolute_percentage_error',
+                      metrics=['mean_absolute_error', 'mean_squared_error'])
 
         # train the model
         model.fit(X_train, y_train, epochs=100, batch_size=32,
