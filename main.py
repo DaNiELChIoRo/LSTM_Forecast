@@ -51,7 +51,7 @@ if __name__ == "__main__":
         def smape(X, y):
             X = np.array(X)
             y = np.array(y)
-            return np.mean(np.abs((X - y) / ((np.abs(X) + np.abs(y)) / 2))) * 100
+            return np.mean(np.abs((X - y) / ((np.abs(X) + np.abs(y)) / 2)))
 
         def mase(y_true, y_pred, y_train):
             # Calculate the mean absolute error of the training data
@@ -87,6 +87,7 @@ if __name__ == "__main__":
             print("Root Mean Square Error: ", rmse)
             print("Symmetric Mean Absolute Percentage Error: ", smape_value)
             print("Mean Absolute Scaled Error: ", mase_value)
+            print("Mean Absolute Percentage Error: ", mape)
 
 
         X, y = create_dataset(scaled_data)
@@ -199,7 +200,7 @@ if __name__ == "__main__":
             Ticker = 'NASDAQ Composite'
         if Ticker == '^MXX':
             Ticker = 'IPC MEXICO'
-        if Ticker == '^MXN=X':
+        if Ticker == 'MXN=X':
             Ticker = 'USD/MXN'
         if Ticker == '^SP500-45':
             Ticker = 'S&P 500 - Information Technology'
@@ -213,11 +214,11 @@ if __name__ == "__main__":
         plt.close()
         # plt.show()
 
-        asyncio.run(send_telegram(f'Here are the next 10 days predictions for {Ticker} stock prices.\n\
-        Predicted Stock Prices for the next 10 days: {predicted_prices}\n\
+        asyncio.run(send_telegram(f'Here are the next 10 days predictions for <b>{Ticker}</b> stock prices.\n\
+        Predicted Stock Prices for the next 10 days: <b>{predicted_prices}</b>\n\
         Mean Absolute Error: % <b>{mae*100:.2f}</b>\n\
         Mean Absolute Percentage Error: % <b>{mape*100:.2f}</b>\n\
-        Mean Absolute Scaled Error: % <b>{mase_value*100:.2f}</b>\n\
+        Mean Absolute Scaled Error: % <b>{mase_value:.2f}</b>\n\
         Symmetric Mean Absolute Percentage Error: % <b>{smape_value*100:.2f}</b>\n\
         Root Mean Square Error: % <b>{rmse*100:.2f}</b>\n\
         Here is the plot:'))

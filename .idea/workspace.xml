@@ -4,8 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fcd45e9e-c484-400f-b4b4-7307aee1e49e" name="Changes" comment="refactor: removing secrets from main code">
+    <list default="true" id="fcd45e9e-c484-400f-b4b4-7307aee1e49e" name="Changes" comment="chore: adding Bidirectional cells for LSTM and correcting MAPE optimazer loss func">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -153,7 +154,31 @@
       <option name="project" value="LOCAL" />
       <updated>1744742711227</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="chore: adding MAPE">
+      <option name="closed" value="true" />
+      <created>1745437902211</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1745437902211</updated>
+    </task>
+    <task id="LOCAL-00011" summary="chore: adding MAPE as loss optimizer function">
+      <option name="closed" value="true" />
+      <created>1745437965374</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1745437965374</updated>
+    </task>
+    <task id="LOCAL-00012" summary="chore: adding Bidirectional cells for LSTM and correcting MAPE optimazer loss func">
+      <option name="closed" value="true" />
+      <created>1745438105252</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1745438105252</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -180,10 +205,13 @@
     <MESSAGE value="chore: fixing issues" />
     <MESSAGE value="chore: removing false bold text" />
     <MESSAGE value="refactor: removing secrets from main code" />
-    <option name="LAST_COMMIT_MESSAGE" value="refactor: removing secrets from main code" />
+    <MESSAGE value="chore: adding MAPE" />
+    <MESSAGE value="chore: adding MAPE as loss optimizer function" />
+    <MESSAGE value="chore: adding Bidirectional cells for LSTM and correcting MAPE optimazer loss func" />
+    <option name="LAST_COMMIT_MESSAGE" value="chore: adding Bidirectional cells for LSTM and correcting MAPE optimazer loss func" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/LSTM_Forecast$main.coverage" NAME="main Coverage Results" MODIFIED="1744745073197" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/LSTM_Forecast$main.coverage" NAME="main Coverage Results" MODIFIED="1745438578950" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/LSTM_Forecast$traceback_utils.coverage" NAME="traceback_utils Coverage Results" MODIFIED="1743643307416" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$USER_HOME$/anaconda3/lib/python3.12/site-packages/keras/src/utils" />
   </component>
 </project>
