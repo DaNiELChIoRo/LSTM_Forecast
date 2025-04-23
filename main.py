@@ -5,7 +5,7 @@ from sklearn.preprocessing import MinMaxScaler
 from keras import Sequential
 from keras.layers import Dense, LSTM, Dropout, AdditiveAttention, Permute, Reshape, Multiply, Attention, Flatten, Dropout, Activation, BatchNormalization
 from keras.callbacks import EarlyStopping
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
 import matplotlib.pyplot as plt
 from telegram_sender import send_telegram, send_image_to_telegram
 import asyncio
@@ -28,6 +28,7 @@ if __name__ == "__main__":
         rmse = None
         smape_value = None
         mase_value = None
+        mape = None
 
         # Create the dataset
         def create_dataset(data, days_range=60):
@@ -61,7 +62,7 @@ if __name__ == "__main__":
             return mae_test / mae_train
 
         def evalModel(model, X_test, y_test):
-            global mae, rmse, mase_value, smape_value
+            global mae, rmse, mase_value, smape_value, mape
             # Convert X_test and y_test to Numpy arrays if they are not already
             X_test = np.array(X_test)
             y_test = np.array(y_test)
@@ -80,6 +81,7 @@ if __name__ == "__main__":
             rmse = mean_squared_error(y_test, y_pred)
             smape_value = smape(y_test, y_pred)
             mase_value = mase(y_test, y_pred, y_train)
+            mape = mean_absolute_percentage_error(y_test, y_pred)
 
             print("Mean Absolute Error: ", mae)
             print("Root Mean Square Error: ", rmse)
@@ -209,13 +211,14 @@ if __name__ == "__main__":
         plt.close()
         # plt.show()
 
-        asyncio.run(send_telegram(f'Here are the next 10 days predictions for {Ticker} stock prices.'))
-        asyncio.run(send_telegram(f'Predicted Stock Prices for the next 10 days: {predicted_prices}'))
-        asyncio.run(send_telegram(f'Mean Absolute Error: % {mae*100:.2f}'))
-        asyncio.run(send_telegram(f'Mean Absolute Scaled Error: % {mase_value*100:.2f}'))
-        asyncio.run(send_telegram(f'Symmetric Mean Absolute Percentage Error: % {smape_value*100:.2f}'))
-        asyncio.run(send_telegram(f'Root Mean Square Error: % {rmse*100:.2f}'))
-        asyncio.run(send_telegram(f'Here is the plot:'))
+        asyncio.run(send_telegram(f'Here are the next 10 days predictions for {Ticker} stock prices.\n\
+        Predicted Stock Prices for the next 10 days: {predicted_prices}\n\
+        Mean Absolute Error: % <b>{mae*100:.2f}</b>\n\
+        Mean Absolute Percentage Error: % <b>{mape*100:.2f}</b>\n\
+        Mean Absolute Scaled Error: % <b>{mase_value*100:.2f}</b>\n\
+        Symmetric Mean Absolute Percentage Error: % <b>{smape_value*100:.2f}</b>\n\
+        Root Mean Square Error: % <b>{rmse*100:.2f}</b>\n\
+        Here is the plot:'))
         asyncio.run(send_image_to_telegram(image_name, caption='Predicted Stock Prices for the next 10 days'))
         asyncio.run(send_image_to_telegram(image_name_full, caption='Predicted Stock Prices for the next 10 days'))
 
