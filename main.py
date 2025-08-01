@@ -9,7 +9,131 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolu
 import matplotlib.pyplot as plt
 from telegram_sender import send_telegram, send_image_to_telegram
 import asyncio
+import os
+import pickle
+from keras.models import load_model
 
+
+# Create the dataset
+def create_dataset(data, days_range=60):
+    X, y = [], []
+    for i in range(days_range, len(data)):
+        X.append(data[i - days_range:i, 0])
+        y.append(data[i, 0])
+    return np.array(X), np.array(y)
+
+# Split the data into training and testing sets
+def split_data(X, y, train_size=0.8):
+    split = int(train_size * len(X))
+    X_train, X_test = X[:split], X[split:]
+    y_train, y_test = y[:split], y[split:]
+
+    X_train, y_train = np.array(X_train), np.array(y_train)
+    X_train = np.reshape(X_train, (X_train.shape[0], X_train.shape[1], 1))
+    return X_train, y_train, X_test, y_test
+
+def smape(X, y):
+    X = np.array(X)
+    y = np.array(y)
+    return np.mean(np.abs((X - y) / ((np.abs(X) + np.abs(y)) / 2)))
+
+def mase(y_true, y_pred, y_train):
+    # Calculate the mean absolute error of the training data
+    mae_train = np.mean(np.abs(y_train - np.mean(y_train)))
+    # Calculate the mean absolute error of the test data
+    mae_test = np.mean(np.abs(y_true - y_pred))
+    # Calculate the MASE
+    return mae_test / mae_train
+
+def save_model_and_scaler(model, scaler, ticker, mae_value):
+    """Save model and scaler with MAE information"""
+    # Create models directory if it doesn't exist
+    os.makedirs('models', exist_ok=True)
+    
+    # Clean ticker name for file naming
+    clean_ticker = ticker.replace('/', '_').replace('^', '').replace('=', '_')
+    
+    # Save model
+    model_path = f'models/{clean_ticker}_model.h5'
+    model.save(model_path)
+    
+    # Save scaler
+    scaler_path = f'models/{clean_ticker}_scaler.pkl'
+    with open(scaler_path, 'wb') as f:
+        pickle.dump(scaler, f)
+    
+    # Save MAE info
+    mae_info_path = f'models/{clean_ticker}_mae_info.pkl'
+    mae_info = {'mae': mae_value, 'ticker': ticker}
+    with open(mae_info_path, 'wb') as f:
+        pickle.dump(mae_info, f)
+    
+    print(f"Model saved for {ticker} with MAE: {mae_value:.4f}")
+
+def load_model_and_scaler(ticker):
+    """Load model and scaler if they exist and MAE is <= 10%"""
+    # Clean ticker name for file naming
+    clean_ticker = ticker.replace('/', '_').replace('^', '').replace('=', '_')
+    
+    model_path = f'models/{clean_ticker}_model.h5'
+    scaler_path = f'models/{clean_ticker}_scaler.pkl'
+    mae_info_path = f'models/{clean_ticker}_mae_info.pkl'
+    
+    # Check if all files exist
+    if not all(os.path.exists(path) for path in [model_path, scaler_path, mae_info_path]):
+        return None, None, None
+    
+    try:
+        # Load MAE info first
+        with open(mae_info_path, 'rb') as f:
+            mae_info = pickle.load(f)
+        
+        # Check if MAE is <= 10%
+        if mae_info['mae'] > 0.10:  # 10% threshold
+            print(f"Saved model for {ticker} has MAE {mae_info['mae']:.4f} > 10%, will retrain")
+            return None, None, None
+        
+        # Load model and scaler
+        model = load_model(model_path)
+        with open(scaler_path, 'rb') as f:
+            scaler = pickle.load(f)
+        
+        print(f"Loaded existing model for {ticker} with MAE: {mae_info['mae']:.4f}")
+        return model, scaler, mae_info['mae']
+        
+    except Exception as e:
+        print(f"Error loading model for {ticker}: {e}")
+        return None, None, None
+
+def evalModel(model, X_test, y_test, y_train):
+    """Evaluate model and return metrics"""
+    # Convert X_test and y_test to Numpy arrays if they are not already
+    X_test = np.array(X_test)
+    y_test = np.array(y_test)
+
+    # Ensure X_test is reshaped similarly to how X_train was reshaped
+    # This depends on how you preprocessed the training data
+    X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
+
+    # Now evaluate the model on the test data
+    test_loss = model.evaluate(X_test, y_test, verbose=0)
+    print("Test Loss: ", test_loss)
+
+    y_pred = model.predict(X_test, verbose=0)
+
+    mae = mean_absolute_error(y_test, y_pred)
+    rmse = mean_squared_error(y_test, y_pred)
+    smape_value = smape(y_test, y_pred)
+    mase_value = mase(y_test, y_pred, y_train)
+    mape = mean_absolute_percentage_error(y_test, y_pred)
+
+    print("Mean Absolute Error: ", mae)
+    print("Root Mean Square Error: ", rmse)
+    print("Symmetric Mean Absolute Percentage Error: ", smape_value)
+    print("Mean Absolute Scaled Error: ", mase_value)
+    print("Mean Absolute Percentage Error: ", mape)
+    
+    return mae, rmse, smape_value, mase_value, mape
 
 
 # main check
@@ -30,103 +154,56 @@ if __name__ == "__main__":
         mase_value = None
         mape = None
 
-        # Create the dataset
-        def create_dataset(data, days_range=60):
-            X, y = [], []
-            for i in range(days_range, len(data)):
-                X.append(data[i - days_range:i, 0])
-                y.append(data[i, 0])
-            return np.array(X), np.array(y)
-
-        # Split the data into training and testing sets
-        def split_data(X, y, train_size=0.8):
-            split = int(train_size * len(X))
-            X_train, X_test = X[:split], X[split:]
-            y_train, y_test = y[:split], y[split:]
-
-            X_train, y_train = np.array(X_train), np.array(y_train)
-            X_train = np.reshape(X_train, (X_train.shape[0], X_train.shape[1], 1))
-            return X_train, y_train, X_test, y_test
-
-        def smape(X, y):
-            X = np.array(X)
-            y = np.array(y)
-            return np.mean(np.abs((X - y) / ((np.abs(X) + np.abs(y)) / 2)))
-
-        def mase(y_true, y_pred, y_train):
-            # Calculate the mean absolute error of the training data
-            mae_train = np.mean(np.abs(y_train - np.mean(y_train)))
-            # Calculate the mean absolute error of the test data
-            mae_test = np.mean(np.abs(y_true - y_pred))
-            # Calculate the MASE
-            return mae_test / mae_train
-
-        def evalModel(model, X_test, y_test):
-            global mae, rmse, mase_value, smape_value, mape
-            # Convert X_test and y_test to Numpy arrays if they are not already
-            X_test = np.array(X_test)
-            y_test = np.array(y_test)
-
-            # Ensure X_test is reshaped similarly to how X_train was reshaped
-            # This depends on how you preprocessed the training data
-            X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
-
-            # Now evaluate the model on the test data
-            test_loss = model.evaluate(X_test, y_test)
-            print("Test Loss: ", test_loss)
-
-            y_pred = model.predict(X_test)
-
-            mae = mean_absolute_error(y_test, y_pred)
-            rmse = mean_squared_error(y_test, y_pred)
-            smape_value = smape(y_test, y_pred)
-            mase_value = mase(y_test, y_pred, y_train)
-            mape = mean_absolute_percentage_error(y_test, y_pred)
-
-            print("Mean Absolute Error: ", mae)
-            print("Root Mean Square Error: ", rmse)
-            print("Symmetric Mean Absolute Percentage Error: ", smape_value)
-            print("Mean Absolute Scaled Error: ", mase_value)
-            print("Mean Absolute Percentage Error: ", mape)
-
-
         X, y = create_dataset(scaled_data)
         X_train, y_train, X_test, y_test = split_data(X, y)
 
-        # Build the LSTM model
-        model = Sequential()
+        # Try to load existing model first
+        model, loaded_scaler, loaded_mae = load_model_and_scaler(Ticker)
+        
+        if model is not None:
+            # Use loaded model and scaler
+            scaler = loaded_scaler
+            evalModel(model, X_test, y_test, y_train)
+        else:
+            # Build and train new model
+            model = Sequential()
 
-        model.add(Bidirectional(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1))))
-        model.add(Bidirectional(LSTM(units=100, return_sequences=True, input_shape=(X_train.shape[1], 1))))
-        model.add(Bidirectional(LSTM(units=150, return_sequences=True, input_shape=(X_train.shape[1], 1))))
-        model.add(Bidirectional(LSTM(units=100, return_sequences=True, input_shape=(X_train.shape[1], 1))))
-        model.add(Bidirectional(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+            model.add(Bidirectional(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+            model.add(Bidirectional(LSTM(units=100, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+            model.add(Bidirectional(LSTM(units=150, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+            model.add(Bidirectional(LSTM(units=100, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+            model.add(Bidirectional(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1))))
 
-        model.add(Dropout(0.2))
-        model.add(Activation('relu'))
-        model.add(BatchNormalization())
-        model.add(LSTM(units=50, return_sequences=True))
-        # The attention mechanism
-        attention = AdditiveAttention(name="attention_weight")
+            model.add(Dropout(0.2))
+            model.add(Activation('relu'))
+            model.add(BatchNormalization())
+            model.add(LSTM(units=50, return_sequences=True))
+            # The attention mechanism
+            attention = AdditiveAttention(name="attention_weight")
 
-        model.add(Flatten())
+            model.add(Flatten())
 
-        # Final Dense Layer
-        model.add(Dense(units=1))
+            # Final Dense Layer
+            model.add(Dense(units=1))
 
+            early_stopping = EarlyStopping(monitor='val_loss', patience=10)
+            # compile the model
+            model.compile(optimizer='adam', loss='mean_squared_error',
+                          metrics=['mean_absolute_error', 'mean_squared_error'])
 
-        early_stopping = EarlyStopping(monitor='val_loss', patience=10)
-        # compile the model
-        model.compile(optimizer='adam', loss='mean_absolute_percentage_error',
-                      metrics=['mean_absolute_error', 'mean_squared_error'])
+            # train the model
+            model.fit(X_train, y_train, epochs=100, batch_size=32,
+                      validation_split=0.2, callbacks=[early_stopping])
 
-        # train the model
-        model.fit(X_train, y_train, epochs=100, batch_size=32,
-                  validation_split=0.2, callbacks=[early_stopping])
+            print(model.summary())
 
-        print(model.summary())
-
-        evalModel(model, X_test, y_test)
+            evalModel(model, X_test, y_test, y_train)
+            
+            # Save model if MAE is <= 10%
+            if mae <= 0.10:  # 10% threshold
+                save_model_and_scaler(model, scaler, Ticker, mae)
+            else:
+                print(f"Model MAE {mae:.4f} > 10%, not saving model")
 
         # Fetching the latest 60 days of AAPL stock data
         data = data.iloc[-60:]  # Get the last 60 days of data
@@ -173,7 +250,9 @@ if __name__ == "__main__":
         plt.xticks(rotation=90)
 
         # Save plot as image to send it to the user
-        image_name = f'{Ticker}_predictions.png'
+        # Clean ticker name for file naming
+        clean_ticker = Ticker.replace('/', '_').replace('^', '').replace('=', '_')
+        image_name = f'{clean_ticker}_predictions.png'
         plt.savefig(image_name)
         # plt.show()
         plt.close()
@@ -209,7 +288,7 @@ if __name__ == "__main__":
         plt.xlabel('Date')
         plt.ylabel('Price')
         plt.legend()
-        image_name_full = f'full {Ticker}_predictions.png'
+        image_name_full = f'full {clean_ticker}_predictions.png'
         plt.savefig(image_name_full)
         plt.close()
         # plt.show()
