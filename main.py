@@ -120,12 +120,21 @@ def evalModel(model, X_test, y_test, y_train):
     print("Test Loss: ", test_loss)
 
     y_pred = model.predict(X_test, verbose=0)
+    
+    # Handle different prediction shapes
+    y_pred_flat = y_pred.flatten()
+    y_test_flat = y_test.flatten()
+    
+    # Ensure both arrays have the same length
+    min_length = min(len(y_test_flat), len(y_pred_flat))
+    y_test_flat = y_test_flat[:min_length]
+    y_pred_flat = y_pred_flat[:min_length]
 
-    mae = mean_absolute_error(y_test, y_pred)
-    rmse = mean_squared_error(y_test, y_pred)
-    smape_value = smape(y_test, y_pred)
-    mase_value = mase(y_test, y_pred, y_train)
-    mape = mean_absolute_percentage_error(y_test, y_pred)
+    mae = mean_absolute_error(y_test_flat, y_pred_flat)
+    rmse = mean_squared_error(y_test_flat, y_pred_flat)
+    smape_value = smape(y_test_flat, y_pred_flat)
+    mase_value = mase(y_test_flat, y_pred_flat, y_train)
+    mape = mean_absolute_percentage_error(y_test_flat, y_pred_flat)
 
     print("Mean Absolute Error: ", mae)
     print("Root Mean Square Error: ", rmse)
@@ -141,12 +150,25 @@ if __name__ == "__main__":
 
     for Ticker in ['USDC-EUR', 'MXN=X', '^MXX', 'BTC-USD', 'ETH-USD', 'PAXG-USD', '^IXIC', '^SP500-45']:
     # for Ticker in ['^IXIC']:
-        # Download the data1
-        data = yf.download(Ticker, period='6y', interval='1d', timeout=20)
-        # data.to_csv(f'data/{Ticker}_tickers.csv')
-        # Normalize the data
-        scaler = MinMaxScaler(feature_range=(0, 1))
-        scaled_data = scaler.fit_transform(data)
+        try:
+            print(f"Processing {Ticker}...")
+            # Download the data1
+            data = yf.download(Ticker, period='6y', interval='1d', timeout=20)
+            
+            # Check if data is empty
+            if data.empty or len(data) < 61:  # Need at least 61 days for 60-day lookback
+                print(f"Insufficient data for {Ticker}, skipping...")
+                continue
+                
+            print(f"Downloaded {len(data)} days of data for {Ticker}")
+            
+            # data.to_csv(f'data/{Ticker}_tickers.csv')
+            # Normalize the data
+            scaler = MinMaxScaler(feature_range=(0, 1))
+            scaled_data = scaler.fit_transform(data)
+        except Exception as e:
+            print(f"Error downloading data for {Ticker}: {e}")
+            continue
 
         mae = None
         rmse = None
@@ -163,7 +185,7 @@ if __name__ == "__main__":
         if model is not None:
             # Use loaded model and scaler
             scaler = loaded_scaler
-            evalModel(model, X_test, y_test, y_train)
+            mae, rmse, smape_value, mase_value, mape = evalModel(model, X_test, y_test, y_train)
         else:
             # Build and train new model
             model = Sequential()
@@ -197,7 +219,7 @@ if __name__ == "__main__":
 
             print(model.summary())
 
-            evalModel(model, X_test, y_test, y_train)
+            mae, rmse, smape_value, mase_value, mape = evalModel(model, X_test, y_test, y_train)
             
             # Save model if MAE is <= 10%
             if mae <= 0.10:  # 10% threshold
@@ -222,16 +244,29 @@ if __name__ == "__main__":
 
         for i in range(10):  # Predicting 10 days
             # Get the prediction (next day)
-            next_prediction = model.predict(current_batch)
+            next_prediction = model.predict(current_batch, verbose=0)
 
-            # Reshape the prediction to fit the batch dimension
-            next_prediction_reshaped = next_prediction.reshape(1, 1, 1)
+            # Handle different model output shapes
+            try:
+                # Try to reshape to (1, 1, 1) - this works for simple models
+                next_prediction_reshaped = next_prediction.reshape(1, 1, 1)
+                prediction_value = next_prediction.flatten()[0]
+            except ValueError:
+                # If reshape fails, handle complex model outputs
+                if len(next_prediction.shape) == 3 and next_prediction.shape[1] > 1:
+                    # Take the last prediction from sequence models
+                    prediction_value = next_prediction[0, -1, 0]
+                    next_prediction_reshaped = np.array([[[prediction_value]]])
+                else:
+                    # For other shapes, take the first element
+                    prediction_value = next_prediction.flatten()[0]
+                    next_prediction_reshaped = np.array([[[prediction_value]]])
 
             # Append the prediction to the batch used for predicting
             current_batch = np.append(current_batch[:, 1:, :], next_prediction_reshaped, axis=1)
 
             # Inverse transform the prediction to the original price scale
-            predicted_prices.append(scaler.inverse_transform(next_prediction)[0, 0])
+            predicted_prices.append(scaler.inverse_transform([[prediction_value]])[0, 0])
 
         print("Predicted Stock Prices for the next 10 days: ", predicted_prices)
 
@@ -293,16 +328,22 @@ if __name__ == "__main__":
         plt.close()
         # plt.show()
 
-        asyncio.run(send_telegram(f'Here are the next 10 days predictions for <b>{Ticker}</b> stock prices.\n\
-        Predicted Stock Prices for the next 10 days: <b>{predicted_prices}</b>\n\
-        Mean Absolute Error: % <b>{mae*100:.2f}</b>\n\
-        Mean Absolute Percentage Error: % <b>{mape*100:.2f}</b>\n\
-        Mean Absolute Scaled Error: % <b>{mase_value:.2f}</b>\n\
-        Symmetric Mean Absolute Percentage Error: % <b>{smape_value*100:.2f}</b>\n\
-        Root Mean Square Error: % <b>{rmse*100:.2f}</b>\n\
-        Here is the plot:'))
-        asyncio.run(send_image_to_telegram(image_name, caption='Predicted Stock Prices for the next 10 days'))
-        asyncio.run(send_image_to_telegram(image_name_full, caption='Predicted Stock Prices for the next 10 days'))
+        try:
+            asyncio.run(send_telegram(f'Here are the next 10 days predictions for <b>{Ticker}</b> stock prices.\n\
+            Predicted Stock Prices for the next 10 days: <b>{predicted_prices}</b>\n\
+            Mean Absolute Error: % <b>{mae*100:.2f}</b>\n\
+            Mean Absolute Percentage Error: % <b>{mape*100:.2f}</b>\n\
+            Mean Absolute Scaled Error: % <b>{mase_value:.2f}</b>\n\
+            Symmetric Mean Absolute Percentage Error: % <b>{smape_value*100:.2f}</b>\n\
+            Root Mean Square Error: % <b>{rmse*100:.2f}</b>\n\
+            Here is the plot:'))
+            asyncio.run(send_image_to_telegram(image_name, caption='Predicted Stock Prices for the next 10 days'))
+            asyncio.run(send_image_to_telegram(image_name_full, caption='Predicted Stock Prices for the next 10 days'))
+        except Exception as e:
+            print(f"Error sending Telegram message for {Ticker}: {e}")
+            
+        print(f"✅ Successfully processed {Ticker}")
+        print("-" * 50)
 
 
 
