@@ -8,6 +8,7 @@ from keras.callbacks import EarlyStopping
 from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
 import matplotlib.pyplot as plt
 from telegram_sender import send_telegram, send_image_to_telegram
+from sentiment_analyzer import get_ticker_sentiment, format_sentiment_for_telegram
 import asyncio
 import os
 import pickle
@@ -227,7 +228,20 @@ if __name__ == "__main__":
             else:
                 print(f"Model MAE {mae:.4f} > 10%, not saving model")
 
-        # Fetching the latest 60 days of AAPL stock data
+        # Analyze market sentiment
+        print("Analyzing market sentiment...")
+        try:
+            sentiment_data = get_ticker_sentiment(Ticker)
+            sentiment_message = format_sentiment_for_telegram(Ticker, sentiment_data)
+            print(f"Sentiment Analysis for {Ticker}:")
+            print(f"  Score: {sentiment_data['sentiment_score']:.3f}")
+            print(f"  Label: {sentiment_data['sentiment_label']}")
+            print(f"  Confidence: {sentiment_data['confidence']*100:.0f}%")
+        except Exception as e:
+            print(f"Error analyzing sentiment for {Ticker}: {e}")
+            sentiment_message = f"\n📊 <b>Sentiment Analysis for {Ticker}</b>\n❌ Could not analyze sentiment\n"
+
+        # Fetching the latest 60 days of stock data
         data = data.iloc[-60:]  # Get the last 60 days of data
         # yf.download(Ticker, period='61d', interval='1d')
 
@@ -329,16 +343,21 @@ if __name__ == "__main__":
         # plt.show()
 
         try:
-            asyncio.run(send_telegram(f'Here are the next 10 days predictions for <b>{Ticker}</b> stock prices.\n\
-            Predicted Stock Prices for the next 10 days: <b>{predicted_prices}</b>\n\
-            Mean Absolute Error: % <b>{mae*100:.2f}</b>\n\
-            Mean Absolute Percentage Error: % <b>{mape*100:.2f}</b>\n\
-            Mean Absolute Scaled Error: % <b>{mase_value:.2f}</b>\n\
-            Symmetric Mean Absolute Percentage Error: % <b>{smape_value*100:.2f}</b>\n\
-            Root Mean Square Error: % <b>{rmse*100:.2f}</b>\n\
-            Here is the plot:'))
-            asyncio.run(send_image_to_telegram(image_name, caption='Predicted Stock Prices for the next 10 days'))
-            asyncio.run(send_image_to_telegram(image_name_full, caption='Predicted Stock Prices for the next 10 days'))
+            # Create comprehensive message with predictions and sentiment
+            prediction_message = f'🔮 <b>LSTM Forecast Report for {Ticker}</b>\n\n'
+            prediction_message += f'📈 <b>Next 10 Days Predictions:</b>\n<code>{predicted_prices}</code>\n\n'
+            prediction_message += f'📊 <b>Model Performance Metrics:</b>\n'
+            prediction_message += f'• Mean Absolute Error: <b>{mae*100:.2f}%</b>\n'
+            prediction_message += f'• Mean Absolute Percentage Error: <b>{mape*100:.2f}%</b>\n'
+            prediction_message += f'• Mean Absolute Scaled Error: <b>{mase_value:.2f}</b>\n'
+            prediction_message += f'• Symmetric MAPE: <b>{smape_value*100:.2f}%</b>\n'
+            prediction_message += f'• Root Mean Square Error: <b>{rmse*100:.2f}%</b>\n'
+            prediction_message += sentiment_message
+            prediction_message += f'\n📸 Charts attached below ⬇️'
+            
+            asyncio.run(send_telegram(prediction_message))
+            asyncio.run(send_image_to_telegram(image_name, caption=f'📊 {Ticker} - Next 10 Days Prediction'))
+            asyncio.run(send_image_to_telegram(image_name_full, caption=f'📈 {Ticker} - Historical Data + Predictions'))
         except Exception as e:
             print(f"Error sending Telegram message for {Ticker}: {e}")
             
