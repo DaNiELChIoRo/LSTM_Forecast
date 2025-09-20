@@ -1,0 +1,93 @@
+# Project-specific
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# PyCharm Local History
+.history/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions (normally built but not checked in)
+*.so
+*.pyd
+
+# Distribution / packaging
+.Python
+env/
+venv/
+build/
+dist/
+eggs/
+.eggs/
+sdist/
+*.egg-info/
+wheelhouse/
+pip-log.txt
+pip-delete-this.txt
+*.whl
+
+# Installers
+.installcf
+install_manifest.txt
+*.manifest
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Compiled static assets
+staticfiles/
+
+# Django stuff:
+*.log
+local_settings.py*
+db.sqlite3
+db.sqlite3-*
+*.sqlite3
+*.sqlite3-*
+
+# Flask stuff:
+instance/
+.webassets-cache
+__pycache__
+
+# Celery stuff
+celerybeat.pid
+celeryd*.pid
+celeryev.pid
+
+# Sensitive data
+*.secret
+*.key
+*.pem
+*.crt
+.env
+
+# OS generated files
+.DS_Store
+Thumbs.db
+$RECYCLE.BIN/
+*.swp
+*.swo
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+desktop.ini
+
+# Other common folders that might be created
+__MACOSX/
+.vscode/
+node_modules/

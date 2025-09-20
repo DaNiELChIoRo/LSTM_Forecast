@@ -3,7 +3,8 @@ import numpy as np
 import yfinance as yf
 from sklearn.preprocessing import MinMaxScaler
 from keras import Sequential
-from keras.layers import Dense, LSTM, Bidirectional,  Dropout, AdditiveAttention, Permute, Reshape, Multiply, Attention, Flatten, Dropout, Activation, BatchNormalization
+from keras.layers import Dense, LSTM, Bidirectional, Dropout, AdditiveAttention, Permute, Reshape, Multiply, Attention, Flatten, Activation, BatchNormalization, Conv1D, MaxPooling1D, GlobalMaxPooling1D, MultiHeadAttention, LayerNormalization, Input, Concatenate
+from keras.models import Model
 from keras.callbacks import EarlyStopping
 from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
 import matplotlib.pyplot as plt
@@ -16,6 +17,30 @@ import time
 import random
 from datetime import datetime
 from keras.models import load_model
+
+# Import configuration manager
+try:
+    from config_manager import ConfigManager, auto_apply_best_config
+    CONFIG_MANAGER_AVAILABLE = True
+except ImportError:
+    CONFIG_MANAGER_AVAILABLE = False
+    print("⚠️  Config manager not available. Using default configuration.")
+
+# Configuration for model architecture - HYBRID CNN-LSTM-TRANSFORMER SELECTED BY DEFAULT
+ARCHITECTURE_CONFIG = {
+    'type': 'hybrid',  # DEFAULT: Hybrid CNN-LSTM-Transformer architecture
+    'cnn_filters': [64, 128],  # CNN feature extraction layers
+    'cnn_kernels': [3, 5],     # CNN kernel sizes for local pattern detection
+    'lstm_units': [50, 100, 50],  # LSTM layers for temporal dependencies
+    'transformer_heads': 8,    # Multi-head attention heads
+    'transformer_key_dim': 64,  # Transformer key dimension
+    'dense_units': [128, 64],   # Final dense layers
+    'dropout_rate': 0.2,        # Dropout for regularization
+    'batch_size': 16,          # Optimized batch size for hybrid model
+    'epochs': 150,             # More epochs for complex architecture
+    'learning_rate': 0.001,    # Learning rate for AdamW optimizer
+    'weight_decay': 0.01       # Weight decay for Transformer components
+}
 
 
 def download_ticker_data_with_retry(ticker, period='6y', max_retries=5, base_delay=10):
@@ -135,6 +160,162 @@ def process_single_ticker(ticker, ticker_index, total_tickers):
         return False
 
 
+def create_hybrid_cnn_lstm_transformer_model(input_shape, architecture_type='hybrid'):
+    """
+    Create a hybrid CNN-LSTM-Transformer model for time series forecasting
+    
+    Args:
+        input_shape (tuple): Input shape (sequence_length, features)
+        architecture_type (str): Type of architecture ('hybrid', 'cnn_lstm', 'transformer_only')
+    
+    Returns:
+        keras.Model: Compiled model
+    """
+    inputs = Input(shape=input_shape)
+    
+    if architecture_type == 'hybrid':
+        # CNN Branch for local pattern extraction
+        cnn_branch = Conv1D(
+            filters=ARCHITECTURE_CONFIG['cnn_filters'][0], 
+            kernel_size=ARCHITECTURE_CONFIG['cnn_kernels'][0], 
+            activation='relu', 
+            padding='same'
+        )(inputs)
+        cnn_branch = BatchNormalization()(cnn_branch)
+        cnn_branch = Conv1D(
+            filters=ARCHITECTURE_CONFIG['cnn_filters'][1], 
+            kernel_size=ARCHITECTURE_CONFIG['cnn_kernels'][1], 
+            activation='relu', 
+            padding='same'
+        )(cnn_branch)
+        cnn_branch = BatchNormalization()(cnn_branch)
+        cnn_branch = MaxPooling1D(pool_size=2)(cnn_branch)
+        cnn_branch = Dropout(ARCHITECTURE_CONFIG['dropout_rate'])(cnn_branch)
+        
+        # LSTM Branch for temporal dependencies
+        lstm_branch = Bidirectional(LSTM(units=ARCHITECTURE_CONFIG['lstm_units'][0], return_sequences=True))(inputs)
+        lstm_branch = Bidirectional(LSTM(units=ARCHITECTURE_CONFIG['lstm_units'][1], return_sequences=True))(lstm_branch)
+        lstm_branch = Bidirectional(LSTM(units=ARCHITECTURE_CONFIG['lstm_units'][2], return_sequences=True))(lstm_branch)
+        lstm_branch = Dropout(ARCHITECTURE_CONFIG['dropout_rate'])(lstm_branch)
+        
+        # Combine CNN and LSTM features
+        combined_features = Concatenate(axis=-1)([cnn_branch, lstm_branch])
+        
+        # Transformer Branch for global attention
+        # Multi-head attention
+        attention_output = MultiHeadAttention(
+            num_heads=ARCHITECTURE_CONFIG['transformer_heads'], 
+            key_dim=ARCHITECTURE_CONFIG['transformer_key_dim'],
+            dropout=0.1
+        )(combined_features, combined_features)
+        
+        # Add & Norm (residual connection)
+        attention_output = LayerNormalization(epsilon=1e-6)(attention_output + combined_features)
+        
+        # Feed-forward network
+        ffn = Dense(256, activation='relu')(attention_output)
+        ffn = Dropout(0.1)(ffn)
+        ffn = Dense(input_shape[0], activation='relu')(ffn)  # Match sequence length
+        
+        # Add & Norm (residual connection)
+        transformer_output = LayerNormalization(epsilon=1e-6)(ffn + attention_output)
+        
+        # Global pooling and final prediction
+        pooled = GlobalMaxPooling1D()(transformer_output)
+        pooled = Dense(ARCHITECTURE_CONFIG['dense_units'][0], activation='relu')(pooled)
+        pooled = Dropout(0.3)(pooled)
+        pooled = Dense(ARCHITECTURE_CONFIG['dense_units'][1], activation='relu')(pooled)
+        outputs = Dense(1)(pooled)
+        
+    elif architecture_type == 'cnn_lstm':
+        # CNN-LSTM hybrid without Transformer
+        x = Conv1D(filters=64, kernel_size=3, activation='relu', padding='same')(inputs)
+        x = BatchNormalization()(x)
+        x = Conv1D(filters=128, kernel_size=5, activation='relu', padding='same')(x)
+        x = BatchNormalization()(x)
+        x = MaxPooling1D(pool_size=2)(x)
+        x = Dropout(0.2)(x)
+        
+        x = Bidirectional(LSTM(units=100, return_sequences=True))(x)
+        x = Bidirectional(LSTM(units=50, return_sequences=True))(x)
+        x = Dropout(0.2)(x)
+        
+        x = GlobalMaxPooling1D()(x)
+        x = Dense(128, activation='relu')(x)
+        x = Dropout(0.3)(x)
+        outputs = Dense(1)(x)
+        
+    elif architecture_type == 'transformer_only':
+        # Pure Transformer architecture
+        x = Dense(64)(inputs)  # Embedding layer
+        
+        # Multi-head attention
+        attention_output = MultiHeadAttention(
+            num_heads=8, 
+            key_dim=64,
+            dropout=0.1
+        )(x, x)
+        
+        # Add & Norm
+        attention_output = LayerNormalization(epsilon=1e-6)(attention_output + x)
+        
+        # Feed-forward
+        ffn = Dense(256, activation='relu')(attention_output)
+        ffn = Dropout(0.1)(ffn)
+        ffn = Dense(64, activation='relu')(ffn)
+        
+        # Add & Norm
+        transformer_output = LayerNormalization(epsilon=1e-6)(ffn + attention_output)
+        
+        # Global pooling and prediction
+        pooled = GlobalMaxPooling1D()(transformer_output)
+        pooled = Dense(128, activation='relu')(pooled)
+        outputs = Dense(1)(pooled)
+    
+    model = Model(inputs=inputs, outputs=outputs)
+    return model
+
+
+def load_optimized_config_for_ticker(ticker):
+    """Load optimized configuration for a specific ticker"""
+    if not CONFIG_MANAGER_AVAILABLE:
+        return False
+    
+    try:
+        config_manager = ConfigManager()
+        optimized_config = config_manager.get_best_config_for_ticker(ticker)
+        
+        if optimized_config:
+            print(f"🎯 Found optimized configuration for {ticker}")
+            print(f"📊 Optimized MAE: {optimized_config.get('mae', 'N/A')}")
+            
+            # Update global ARCHITECTURE_CONFIG
+            global ARCHITECTURE_CONFIG
+            ARCHITECTURE_CONFIG.update({
+                'cnn_filters': optimized_config.get('cnn_filters', ARCHITECTURE_CONFIG['cnn_filters']),
+                'cnn_kernels': optimized_config.get('cnn_kernels', ARCHITECTURE_CONFIG['cnn_kernels']),
+                'lstm_units': optimized_config.get('lstm_units', ARCHITECTURE_CONFIG['lstm_units']),
+                'transformer_heads': optimized_config.get('transformer_heads', ARCHITECTURE_CONFIG['transformer_heads']),
+                'transformer_key_dim': optimized_config.get('transformer_key_dim', ARCHITECTURE_CONFIG['transformer_key_dim']),
+                'dense_units': optimized_config.get('dense_units', ARCHITECTURE_CONFIG['dense_units']),
+                'dropout_rate': optimized_config.get('dropout_rate', ARCHITECTURE_CONFIG['dropout_rate']),
+                'batch_size': optimized_config.get('batch_size', ARCHITECTURE_CONFIG['batch_size']),
+                'epochs': optimized_config.get('epochs', ARCHITECTURE_CONFIG['epochs']),
+                'learning_rate': optimized_config.get('learning_rate', ARCHITECTURE_CONFIG['learning_rate']),
+                'weight_decay': optimized_config.get('weight_decay', ARCHITECTURE_CONFIG['weight_decay'])
+            })
+            
+            print(f"✅ Applied optimized configuration for {ticker}")
+            return True
+        else:
+            print(f"ℹ️  No optimized configuration found for {ticker}, using default")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error loading optimized config for {ticker}: {e}")
+        return False
+
+
 def process_ticker_data(ticker, data):
     """
     Process the downloaded ticker data (main processing logic)
@@ -147,6 +328,9 @@ def process_ticker_data(ticker, data):
         bool: True if processing was successful
     """
     try:
+        # Load optimized configuration for this ticker
+        config_loaded = load_optimized_config_for_ticker(ticker)
+        
         # Normalize the data
         scaler = MinMaxScaler(feature_range=(0, 1))
         scaled_data = scaler.fit_transform(data)
@@ -168,37 +352,73 @@ def process_ticker_data(ticker, data):
             scaler = loaded_scaler
             mae, rmse, smape_value, mase_value, mape = evalModel(model, X_test, y_test, y_train)
         else:
-            # Build and train new model
-            model = Sequential()
+            # Build and train new hybrid model (DEFAULT ARCHITECTURE)
+            print("🏗️  Building HYBRID CNN-LSTM-Transformer Model (DEFAULT SELECTION)...")
+            print("🔧 This architecture combines:")
+            print("   • CNN: Local pattern extraction")
+            print("   • LSTM: Temporal dependencies")
+            print("   • Transformer: Global attention mechanism")
+            
+            # Use architecture configuration
+            architecture_type = ARCHITECTURE_CONFIG['type']
+            
+            if architecture_type == 'original_lstm':
+                # Original LSTM architecture for comparison
+                model = Sequential()
+                model.add(Bidirectional(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+                model.add(Bidirectional(LSTM(units=100, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+                model.add(Bidirectional(LSTM(units=150, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+                model.add(Bidirectional(LSTM(units=100, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+                model.add(Bidirectional(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+                model.add(Dropout(0.2))
+                model.add(Activation('relu'))
+                model.add(BatchNormalization())
+                model.add(LSTM(units=50, return_sequences=True))
+                model.add(Flatten())
+                model.add(Dense(units=1))
+            else:
+                # Use hybrid architecture
+                model = create_hybrid_cnn_lstm_transformer_model(
+                    input_shape=(X_train.shape[1], 1), 
+                    architecture_type=architecture_type
+                )
 
-            model.add(Bidirectional(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1))))
-            model.add(Bidirectional(LSTM(units=100, return_sequences=True, input_shape=(X_train.shape[1], 1))))
-            model.add(Bidirectional(LSTM(units=150, return_sequences=True, input_shape=(X_train.shape[1], 1))))
-            model.add(Bidirectional(LSTM(units=100, return_sequences=True, input_shape=(X_train.shape[1], 1))))
-            model.add(Bidirectional(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1))))
+            early_stopping = EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True)
+            
+            # Compile the model with different optimizers based on architecture
+            if architecture_type in ['hybrid', 'transformer_only']:
+                # Use AdamW for Transformer-based models
+                from keras.optimizers import AdamW
+                optimizer = AdamW(
+                    learning_rate=ARCHITECTURE_CONFIG['learning_rate'], 
+                    weight_decay=ARCHITECTURE_CONFIG['weight_decay']
+                )
+            else:
+                optimizer = 'adam'
+            
+            model.compile(
+                optimizer=optimizer, 
+                loss='mean_squared_error',
+                metrics=['mean_absolute_error', 'mean_squared_error']
+            )
 
-            model.add(Dropout(0.2))
-            model.add(Activation('relu'))
-            model.add(BatchNormalization())
-            model.add(LSTM(units=50, return_sequences=True))
-            # The attention mechanism
-            attention = AdditiveAttention(name="attention_weight")
-
-            model.add(Flatten())
-
-            # Final Dense Layer
-            model.add(Dense(units=1))
-
-            early_stopping = EarlyStopping(monitor='val_loss', patience=10)
-            # compile the model
-            model.compile(optimizer='adam', loss='mean_squared_error',
-                          metrics=['mean_absolute_error', 'mean_squared_error'])
-
-            # train the model
-            model.fit(X_train, y_train, epochs=100, batch_size=32,
-                      validation_split=0.2, callbacks=[early_stopping])
-
+            print(f"📊 Architecture: {architecture_type.upper()}")
+            print(f"🔧 Configuration: {ARCHITECTURE_CONFIG}")
             print(model.summary())
+
+            # Train the model with configuration parameters
+            epochs = ARCHITECTURE_CONFIG['epochs']
+            batch_size = ARCHITECTURE_CONFIG['batch_size']
+            
+            print(f"🚀 Training for {epochs} epochs with batch size {batch_size}")
+            model.fit(
+                X_train, y_train, 
+                epochs=epochs, 
+                batch_size=batch_size,
+                validation_split=0.2, 
+                callbacks=[early_stopping],
+                verbose=1
+            )
 
             mae, rmse, smape_value, mase_value, mape = evalModel(model, X_test, y_test, y_train)
             
@@ -324,7 +544,9 @@ def process_ticker_data(ticker, data):
 
         try:
             # Create comprehensive message with predictions and sentiment
-            prediction_message = f'🔮 <b>LSTM Forecast Report for {display_ticker}</b>\n\n'
+            architecture_name = ARCHITECTURE_CONFIG['type'].upper().replace('_', '-')
+            prediction_message = f'🔮 <b>{architecture_name} Forecast Report for {display_ticker}</b>\n\n'
+            prediction_message += f'🏗️ <b>Architecture:</b> {architecture_name}\n'
             prediction_message += f'📈 <b>Next 10 Days Predictions:</b>\n<code>{predicted_prices}</code>\n\n'
             prediction_message += f'📊 <b>Model Performance Metrics:</b>\n'
             prediction_message += f'• Mean Absolute Error: <b>{mae*100:.2f}%</b>\n'
@@ -488,7 +710,8 @@ if __name__ == "__main__":
     tickers = ['USDC-EUR', 'MXN=X', '^MXX', 'BTC-USD', 'ETH-USD', 'PAXG-USD', '^IXIC', '^SP500-45']
     # tickers = ['^IXIC']  # Uncomment for testing with single ticker
     
-    print(f"\n🚀 Starting LSTM Forecast with Rate Limiting Protection")
+    print(f"\n🚀 Starting HYBRID CNN-LSTM-Transformer Forecast with Rate Limiting Protection")
+    print(f"🏗️  Architecture: {ARCHITECTURE_CONFIG['type'].upper()} (DEFAULT SELECTION)")
     print(f"📊 Processing {len(tickers)} tickers with delays between requests")
     print(f"⏰ Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"{'='*80}")
@@ -530,7 +753,8 @@ if __name__ == "__main__":
     total_time = end_time - start_time
     
     print(f"\n{'='*80}")
-    print(f"🏁 LSTM Forecast Processing Complete!")
+    print(f"🏁 HYBRID CNN-LSTM-Transformer Forecast Processing Complete!")
+    print(f"🏗️  Architecture Used: {ARCHITECTURE_CONFIG['type'].upper()} (DEFAULT)")
     print(f"⏰ Total time: {total_time/60:.1f} minutes")
     print(f"✅ Successful: {len(successful_tickers)} tickers")
     print(f"❌ Failed: {len(failed_tickers)} tickers")
@@ -543,7 +767,9 @@ if __name__ == "__main__":
     
     # Send summary to Telegram
     try:
-        summary_message = f"🏁 <b>LSTM Forecast Batch Complete</b>\n\n"
+        architecture_name = ARCHITECTURE_CONFIG['type'].upper().replace('_', '-')
+        summary_message = f"🏁 <b>{architecture_name} Forecast Batch Complete</b>\n\n"
+        summary_message += f"🏗️ <b>Architecture:</b> {architecture_name} (DEFAULT)\n"
         summary_message += f"⏰ <b>Total Time:</b> {total_time/60:.1f} minutes\n"
         summary_message += f"✅ <b>Successful:</b> {len(successful_tickers)}/{len(tickers)} tickers\n"
         summary_message += f"❌ <b>Failed:</b> {len(failed_tickers)}/{len(tickers)} tickers\n\n"
