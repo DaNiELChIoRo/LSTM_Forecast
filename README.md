@@ -21,6 +21,171 @@ The system uses a hybrid CNN-LSTM-Transformer architecture:
 - **Transformer Branch**: Provides global attention mechanisms for long-range dependencies
 - **Sentiment Integration**: Incorporates market sentiment scores into predictions
 
+### System Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "Data Sources"
+        A[Yahoo Finance API<br/>Stock Price Data]
+        B[News APIs<br/>Financial News]
+        C[Social Media<br/>Twitter/Reddit]
+        D[Market Indicators<br/>VIX, Fear/Greed]
+    end
+    
+    subgraph "Data Processing"
+        E[Data Download<br/>OHLCV Data]
+        F[Sentiment Analysis<br/>Text Processing]
+        G[Data Normalization<br/>MinMaxScaler]
+        H[Sequence Creation<br/>60-day windows]
+    end
+    
+    subgraph "Hybrid Neural Architecture"
+        subgraph "CNN Branch"
+            I[Conv1D Layer 1<br/>64 filters, kernel=3]
+            J[Conv1D Layer 2<br/>128 filters, kernel=5]
+            K[Batch Normalization<br/>MaxPooling1D]
+        end
+        
+        subgraph "LSTM Branch"
+            L[Bidirectional LSTM 1<br/>50 units]
+            M[Bidirectional LSTM 2<br/>100 units]
+            N[Bidirectional LSTM 3<br/>50 units]
+        end
+        
+        subgraph "Transformer Branch"
+            O[Multi-Head Attention<br/>8 heads, 64 dim]
+            P[Layer Normalization<br/>Residual Connection]
+            Q[Feed-Forward Network<br/>256 → 60 units]
+        end
+        
+        R[Feature Concatenation<br/>CNN + LSTM + Transformer]
+        S[Dense Layers<br/>128 → 64 → 1]
+    end
+    
+    subgraph "Model Management"
+        T[Model Training<br/>150 epochs, Adam optimizer]
+        U[Model Evaluation<br/>MAE, RMSE, MAPE]
+        V[Model Persistence<br/>Save/Load best models]
+        W[Fine-Tuning System<br/>Hyperparameter optimization]
+    end
+    
+    subgraph "Output & Notifications"
+        X[Price Predictions<br/>Next day forecasts]
+        Y[Performance Metrics<br/>Accuracy reports]
+        Z[Visualization<br/>Charts & graphs]
+        AA[Telegram Bot<br/>Automated notifications]
+    end
+    
+    subgraph "Configuration"
+        BB[Config Manager<br/>Architecture settings]
+        CC[Sentiment Config<br/>Source weights]
+        DD[Telegram Config<br/>Bot credentials]
+    end
+    
+    %% Data flow connections
+    A --> E
+    B --> F
+    C --> F
+    D --> F
+    
+    E --> G
+    F --> G
+    G --> H
+    
+    H --> I
+    H --> L
+    
+    I --> J
+    J --> K
+    L --> M
+    M --> N
+    
+    K --> R
+    N --> R
+    R --> O
+    O --> P
+    P --> Q
+    Q --> R
+    
+    R --> S
+    
+    S --> T
+    T --> U
+    U --> V
+    V --> W
+    
+    U --> X
+    U --> Y
+    X --> Z
+    Y --> Z
+    Z --> AA
+    
+    BB --> T
+    CC --> F
+    DD --> AA
+    
+    %% Styling
+    classDef dataSource fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef processing fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef neural fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef management fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef output fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef config fill:#f1f8e9,stroke:#33691e,stroke-width:2px
+    
+    class A,B,C,D dataSource
+    class E,F,G,H processing
+    class I,J,K,L,M,N,O,P,Q,R,S neural
+    class T,U,V,W management
+    class X,Y,Z,AA output
+    class BB,CC,DD config
+```
+
+### Architecture Components
+
+#### 🔵 Data Sources (Blue)
+- **Yahoo Finance API**: Primary source for stock price data (OHLCV)
+- **News APIs**: Financial news for sentiment analysis
+- **Social Media**: Twitter and Reddit sentiment data
+- **Market Indicators**: VIX, fear/greed index, technical indicators
+
+#### 🟣 Data Processing (Purple)
+- **Data Download**: Retrieves historical price data with retry logic
+- **Sentiment Analysis**: Processes text data using NLP techniques
+- **Data Normalization**: MinMaxScaler for feature scaling
+- **Sequence Creation**: Creates 60-day sliding windows for LSTM input
+
+#### 🟢 Hybrid Neural Architecture (Green)
+- **CNN Branch**: 
+  - Conv1D layers with 64 and 128 filters
+  - Kernel sizes of 3 and 5 for local pattern detection
+  - Batch normalization and max pooling
+- **LSTM Branch**:
+  - Bidirectional LSTM layers (50 → 100 → 50 units)
+  - Captures temporal dependencies in both directions
+- **Transformer Branch**:
+  - Multi-head attention with 8 heads and 64 dimensions
+  - Layer normalization with residual connections
+  - Feed-forward network for global attention
+- **Feature Fusion**: Concatenates all branch outputs
+- **Dense Layers**: Final prediction layers (128 → 64 → 1)
+
+#### 🟠 Model Management (Orange)
+- **Model Training**: 150 epochs with Adam optimizer and early stopping
+- **Model Evaluation**: Comprehensive metrics (MAE, RMSE, MAPE, SMAPE, MASE)
+- **Model Persistence**: Saves/loads best performing models
+- **Fine-Tuning System**: Automated hyperparameter optimization
+
+#### 🔴 Output & Notifications (Red)
+- **Price Predictions**: Next-day stock price forecasts
+- **Performance Metrics**: Detailed accuracy reports
+- **Visualization**: Charts and graphs for visual analysis
+- **Telegram Bot**: Automated notifications and chart sharing
+
+#### 🟢 Configuration (Green)
+- **Config Manager**: Manages architecture settings and hyperparameters
+- **Sentiment Config**: Controls sentiment source weights and thresholds
+- **Telegram Config**: Bot credentials and notification settings
+
 ## 📁 Project Structure
 
 ```
@@ -222,6 +387,8 @@ python test_architectures.py
 
 ## 📊 Example Output
 
+### Console Output
+
 ```
 🚀 Starting LSTM Forecasting with Market Sentiment Analysis
 ============================================================
@@ -261,6 +428,20 @@ Non-trainable params: 400
 💾 Model saved successfully!
 📱 Telegram notification sent!
 ```
+
+### Visual Results
+
+The system generates comprehensive visualizations showing the forecasting results:
+
+#### Market Sentiment Analysis
+![Market Sentiment Analysis](market_sentiment_analysis.png)
+*Figure 1: Market sentiment analysis showing the composite sentiment score and breakdown across different sources (news, social media, technical indicators, and market data). The sentiment score ranges from -1 (very bearish) to +1 (very bullish), with the current composite sentiment displayed prominently.*
+
+#### Price Prediction Charts
+![Price Prediction Results](price_prediction_results.png)
+*Figure 2: Price prediction visualization showing historical data (blue line), actual prices (green line), and predicted prices (red line). The chart displays the model's forecasting accuracy with confidence intervals and performance metrics.*
+
+These visualizations are automatically generated and can be sent via Telegram notifications, providing users with immediate visual feedback on the forecasting performance and market sentiment analysis.
 
 ## 🔧 Troubleshooting
 
