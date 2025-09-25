@@ -189,7 +189,7 @@ def create_hybrid_cnn_lstm_transformer_model(input_shape, architecture_type='hyb
             padding='same'
         )(cnn_branch)
         cnn_branch = BatchNormalization()(cnn_branch)
-        cnn_branch = MaxPooling1D(pool_size=2)(cnn_branch)
+        # Remove MaxPooling to maintain sequence length for concatenation
         cnn_branch = Dropout(ARCHITECTURE_CONFIG['dropout_rate'])(cnn_branch)
         
         # LSTM Branch for temporal dependencies
@@ -198,7 +198,7 @@ def create_hybrid_cnn_lstm_transformer_model(input_shape, architecture_type='hyb
         lstm_branch = Bidirectional(LSTM(units=ARCHITECTURE_CONFIG['lstm_units'][2], return_sequences=True))(lstm_branch)
         lstm_branch = Dropout(ARCHITECTURE_CONFIG['dropout_rate'])(lstm_branch)
         
-        # Combine CNN and LSTM features
+        # Combine CNN and LSTM features (now both have same sequence length)
         combined_features = Concatenate(axis=-1)([cnn_branch, lstm_branch])
         
         # Transformer Branch for global attention
@@ -215,7 +215,7 @@ def create_hybrid_cnn_lstm_transformer_model(input_shape, architecture_type='hyb
         # Feed-forward network
         ffn = Dense(256, activation='relu')(attention_output)
         ffn = Dropout(0.1)(ffn)
-        ffn = Dense(input_shape[0], activation='relu')(ffn)  # Match sequence length
+        ffn = Dense(combined_features.shape[-1], activation='relu')(ffn)  # Match feature dimension
         
         # Add & Norm (residual connection)
         transformer_output = LayerNormalization(epsilon=1e-6)(ffn + attention_output)
