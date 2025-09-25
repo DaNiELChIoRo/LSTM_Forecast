@@ -18,8 +18,8 @@ def main():
                        help='Number of configurations to test (default: 20)')
     parser.add_argument('--workers', type=int, default=2, 
                        help='Number of parallel workers (default: 2)')
-    parser.add_argument('--period', type=str, default='2y', 
-                       help='Data period for training (default: 2y)')
+    parser.add_argument('--period', type=str, default='max', 
+                       help='Data period for training (default: max - all available data)')
     parser.add_argument('--apply', action='store_true', 
                        help='Apply best config to main.py after tuning')
     

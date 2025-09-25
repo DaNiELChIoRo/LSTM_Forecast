@@ -86,7 +86,7 @@ class TuningConfig:
 class HyperparameterTuner:
     """Automated hyperparameter tuning for the hybrid architecture"""
     
-    def __init__(self, ticker: str = 'BTC-USD', test_period: str = '2y'):
+    def __init__(self, ticker: str = 'BTC-USD', test_period: str = 'max'):
         self.ticker = ticker
         self.test_period = test_period
         self.best_configs = []

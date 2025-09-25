@@ -363,8 +363,8 @@ if __name__ == "__main__":
             print(f"Current Market Sentiment: {composite_sentiment:.3f}")
             print(f"{'='*50}")
             
-            # Download the data
-            data = yf.download(Ticker, period='6y', interval='1d', timeout=20)
+            # Download the data (using maximum available historical data)
+            data = yf.download(Ticker, period='max', interval='1d', timeout=20)
             
             # Check if data is empty
             if data.empty or len(data) < 60:

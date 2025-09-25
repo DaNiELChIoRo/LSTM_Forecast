@@ -43,7 +43,7 @@ ARCHITECTURE_CONFIG = {
 }
 
 
-def download_ticker_data_with_retry(ticker, period='6y', max_retries=5, base_delay=10):
+def download_ticker_data_with_retry(ticker, period='max', max_retries=5, base_delay=10):
     """
     Download ticker data with exponential backoff retry logic
     
@@ -140,8 +140,8 @@ def process_single_ticker(ticker, ticker_index, total_tickers):
     print(f"{'='*60}")
     
     try:
-        # Download data with retry logic
-        data = download_ticker_data_with_retry(ticker, period='6y', max_retries=5, base_delay=10)
+        # Download data with retry logic (using maximum available historical data)
+        data = download_ticker_data_with_retry(ticker, period='max', max_retries=5, base_delay=10)
         
         if data is None:
             print(f"❌ Failed to download data for {ticker} after all retries")
