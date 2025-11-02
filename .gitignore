@@ -91,3 +91,10 @@ desktop.ini
 __MACOSX/
 .vscode/
 node_modules/
+
+# Generated prediction images and model files
+*_predictions.png
+full *_predictions.png
+models/
+*.h5
+*.pkl
