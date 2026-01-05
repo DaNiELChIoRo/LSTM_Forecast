@@ -704,8 +704,182 @@ def evalModel(model, X_test, y_test, y_train):
     return mae, rmse, smape_value, mase_value, mape
 
 
-# main check
-if __name__ == "__main__":
+def run_main_with_auto_fix(max_retries=1):
+    """
+    Wrapper function that catches errors and automatically calls Claude CLI to fix them.
+
+    Args:
+        max_retries: Maximum number of times to attempt auto-fix (default: 1 to prevent infinite loops)
+
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    import traceback
+    import subprocess
+    import sys
+
+    retry_count = 0
+
+    while retry_count <= max_retries:
+        try:
+            # Run the main forecasting pipeline
+            return _execute_main_pipeline()
+
+        except Exception as e:
+            # Capture full error information
+            error_type = type(e).__name__
+            error_message = str(e)
+            error_traceback = traceback.format_exc()
+
+            print(f"\n{'='*80}")
+            print(f"🚨 ERROR DETECTED: {error_type}")
+            print(f"{'='*80}")
+            print(f"Message: {error_message}")
+            print(f"\nFull Traceback:\n{error_traceback}")
+            print(f"{'='*80}\n")
+
+            # Create error report file
+            error_report_path = f"error_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            with open(error_report_path, 'w') as f:
+                f.write(f"LSTM Forecast Error Report\n")
+                f.write(f"{'='*80}\n")
+                f.write(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Error Type: {error_type}\n")
+                f.write(f"Error Message: {error_message}\n")
+                f.write(f"\nFull Traceback:\n{error_traceback}\n")
+                f.write(f"{'='*80}\n")
+
+            print(f"📝 Error report saved to: {error_report_path}")
+
+            # Send error notification via Telegram
+            try:
+                error_telegram_message = f"""
+🚨 <b>LSTM Forecast Error Detected</b>
+
+<b>Error Type:</b> {error_type}
+<b>Error Message:</b> {error_message}
+
+<b>Retry Attempt:</b> {retry_count + 1}/{max_retries + 1}
+
+📝 Full error report saved to: {error_report_path}
+                """.strip()
+
+                asyncio.run(send_telegram(error_telegram_message))
+                print("📱 Error notification sent to Telegram")
+            except Exception as telegram_error:
+                print(f"⚠️  Failed to send error notification: {telegram_error}")
+
+            # Auto-fix with Claude CLI if retries remaining
+            if retry_count < max_retries:
+                retry_count += 1
+                print(f"\n🤖 Attempting auto-fix with Claude CLI (Attempt {retry_count}/{max_retries})...")
+
+                try:
+                    # Create Claude prompt for fixing the error
+                    claude_prompt = f"""
+Fix the error in main.py that's causing this failure:
+
+ERROR TYPE: {error_type}
+ERROR MESSAGE: {error_message}
+
+TRACEBACK:
+{error_traceback}
+
+Please:
+1. Identify the root cause of the error
+2. Fix the issue in main.py
+3. Ensure the fix doesn't break existing functionality
+4. Add appropriate error handling if needed
+5. Commit the fix with a descriptive message
+
+The fix should be minimal and focused on resolving this specific error.
+                    """.strip()
+
+                    # Save prompt to file
+                    prompt_file = f"claude_fix_prompt_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                    with open(prompt_file, 'w') as f:
+                        f.write(claude_prompt)
+
+                    print(f"📋 Claude prompt saved to: {prompt_file}")
+                    print(f"🔧 Calling Claude CLI to analyze and fix the error...")
+
+                    # Call Claude CLI
+                    # Note: This requires 'claude' CLI to be installed and available in PATH
+                    result = subprocess.run(
+                        ['claude', '--message', claude_prompt],
+                        capture_output=True,
+                        text=True,
+                        timeout=300  # 5 minute timeout
+                    )
+
+                    if result.returncode == 0:
+                        print("✅ Claude CLI executed successfully")
+                        print(f"Output:\n{result.stdout}")
+
+                        # Notify via Telegram that fix was attempted
+                        try:
+                            fix_message = f"""
+🤖 <b>Claude CLI Auto-Fix Attempted</b>
+
+<b>Retry Attempt:</b> {retry_count}/{max_retries}
+<b>Status:</b> Fix applied, retrying execution...
+
+Check the logs for details.
+                            """.strip()
+                            asyncio.run(send_telegram(fix_message))
+                        except:
+                            pass
+
+                        print(f"\n🔄 Retrying execution after auto-fix...")
+                        continue  # Retry the main pipeline
+                    else:
+                        print(f"❌ Claude CLI failed: {result.stderr}")
+                        raise Exception("Claude CLI auto-fix failed")
+
+                except subprocess.TimeoutExpired:
+                    print("⏱️  Claude CLI timed out (5 minutes)")
+                    break
+                except FileNotFoundError:
+                    print("⚠️  Claude CLI not found. Install with: pip install claude-cli")
+                    print("   Or ensure 'claude' command is in your PATH")
+                    break
+                except Exception as claude_error:
+                    print(f"❌ Claude CLI error: {claude_error}")
+                    break
+            else:
+                print(f"\n❌ Max retries ({max_retries}) reached. Auto-fix aborted.")
+                break
+
+    # If we get here, all retries failed
+    print(f"\n{'='*80}")
+    print(f"❌ FATAL ERROR: Unable to complete execution after {retry_count} retry attempts")
+    print(f"📝 Error report: {error_report_path}")
+    print(f"{'='*80}\n")
+
+    # Send final failure notification
+    try:
+        final_message = f"""
+❌ <b>LSTM Forecast FAILED</b>
+
+<b>Error Type:</b> {error_type}
+<b>Retry Attempts:</b> {retry_count}/{max_retries}
+
+Manual intervention required.
+        """.strip()
+        asyncio.run(send_telegram(final_message))
+    except:
+        pass
+
+    return False
+
+
+def _execute_main_pipeline():
+    """
+    Execute the main forecasting pipeline.
+
+    Returns:
+        bool: True if successful
+    """
     # List of tickers to process
     tickers = ['USDC-EUR', 'MXN=X', '^MXX', 'BTC-USD', 'ETH-USD', 'PAXG-USD', '^IXIC', '^SP500-45']
     # tickers = ['^IXIC']  # Uncomment for testing with single ticker
@@ -795,7 +969,35 @@ if __name__ == "__main__":
     print(f"🎉 Process completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"{'='*80}\n")
 
+    return True  # Successful execution
 
+
+# Main entry point with auto-fix capability
+if __name__ == "__main__":
+    import sys
+
+    # Check if auto-fix is enabled (default: enabled)
+    # Can be disabled by setting environment variable: DISABLE_AUTO_FIX=1
+    import os
+    auto_fix_enabled = os.getenv('DISABLE_AUTO_FIX', '0') != '1'
+
+    if auto_fix_enabled:
+        print("🤖 Auto-fix enabled (Claude CLI will attempt to fix errors)")
+        print("   To disable: set environment variable DISABLE_AUTO_FIX=1\n")
+        success = run_main_with_auto_fix(max_retries=1)
+    else:
+        print("⚠️  Auto-fix disabled")
+        print("   To enable: unset DISABLE_AUTO_FIX or set DISABLE_AUTO_FIX=0\n")
+        try:
+            success = _execute_main_pipeline()
+        except Exception as e:
+            print(f"❌ Fatal error: {e}")
+            import traceback
+            traceback.print_exc()
+            success = False
+
+    # Exit with appropriate status code
+    sys.exit(0 if success else 1)
 
 
 

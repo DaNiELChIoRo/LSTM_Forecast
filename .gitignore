@@ -98,3 +98,7 @@ full *_predictions.png
 models/
 *.h5
 *.pkl
+
+# Auto-fix error reports and prompts
+error_report_*.txt
+claude_fix_prompt_*.txt
