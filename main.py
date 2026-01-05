@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
 import yfinance as yf
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
 from keras import Sequential
-from keras.layers import Dense, LSTM, Bidirectional, Dropout, AdditiveAttention, Permute, Reshape, Multiply, Attention, Flatten, Activation, BatchNormalization, Conv1D, MaxPooling1D, GlobalMaxPooling1D, MultiHeadAttention, LayerNormalization, Input, Concatenate
+from keras.layers import Dense, LSTM, GRU, Bidirectional, Dropout, AdditiveAttention, Permute, Reshape, Multiply, Attention, Flatten, Activation, BatchNormalization, Conv1D, MaxPooling1D, GlobalMaxPooling1D, MultiHeadAttention, LayerNormalization, Input, Concatenate
 from keras.models import Model
 from keras.callbacks import EarlyStopping
 from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
@@ -41,6 +41,148 @@ ARCHITECTURE_CONFIG = {
     'learning_rate': 0.001,    # Learning rate for AdamW optimizer
     'weight_decay': 0.01       # Weight decay for Transformer components
 }
+
+
+# ============================================================================
+# FEATURE ENGINEERING - IMPROVED
+# ============================================================================
+
+def add_technical_features(df):
+    """
+    Add OHLCV features and technical indicators.
+    IMPROVEMENT: Use all available data instead of just closing prices.
+
+    Args:
+        df: DataFrame with OHLCV data
+
+    Returns:
+        DataFrame with additional technical features
+    """
+    df = df.copy()
+
+    # Price-based features
+    df['Returns'] = df['Close'].pct_change()
+    df['HL_Spread'] = (df['High'] - df['Low']) / df['Close']
+    df['OC_Change'] = (df['Close'] - df['Open']) / df['Open']
+
+    # Simple Moving Averages
+    df['SMA_5'] = df['Close'].rolling(window=5).mean()
+    df['SMA_10'] = df['Close'].rolling(window=10).mean()
+    df['SMA_20'] = df['Close'].rolling(window=20).mean()
+
+    # Exponential Moving Averages
+    df['EMA_12'] = df['Close'].ewm(span=12, adjust=False).mean()
+    df['EMA_26'] = df['Close'].ewm(span=26, adjust=False).mean()
+
+    # MACD
+    df['MACD'] = df['EMA_12'] - df['EMA_26']
+    df['MACD_Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+
+    # RSI (Relative Strength Index)
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    df['RSI'] = 100 - (100 / (1 + rs))
+
+    # Bollinger Bands
+    df['BB_Middle'] = df['Close'].rolling(window=20).mean()
+    bb_std = df['Close'].rolling(window=20).std()
+    df['BB_Upper'] = df['BB_Middle'] + (bb_std * 2)
+    df['BB_Lower'] = df['BB_Middle'] - (bb_std * 2)
+    df['BB_Width'] = (df['BB_Upper'] - df['BB_Lower']) / df['BB_Middle']
+
+    # Volume features
+    df['Volume_SMA'] = df['Volume'].rolling(window=20).mean()
+    df['Volume_Ratio'] = df['Volume'] / df['Volume_SMA']
+
+    # Price relative to moving averages
+    df['Price_to_SMA20'] = df['Close'] / df['SMA_20']
+    df['Price_to_EMA12'] = df['Close'] / df['EMA_12']
+
+    # Momentum
+    df['Momentum'] = df['Close'] - df['Close'].shift(10)
+
+    # Fill NaN values (from indicators that need history)
+    df = df.fillna(method='bfill').fillna(method='ffill')
+
+    return df
+
+
+def select_features_for_training(use_full_features=True):
+    """
+    Select which features to use for training.
+
+    Args:
+        use_full_features: If True, use OHLCV + indicators. If False, use only Close.
+
+    Returns:
+        List of feature column names
+    """
+    if use_full_features:
+        # IMPROVED: Use OHLCV + key technical indicators
+        return [
+            'Open', 'High', 'Low', 'Close', 'Volume',
+            'Returns', 'HL_Spread', 'OC_Change',
+            'RSI', 'MACD', 'BB_Width',
+            'Volume_Ratio', 'Price_to_SMA20', 'Momentum'
+        ]
+    else:
+        # Legacy: Only closing prices
+        return ['Close']
+
+
+# ============================================================================
+# BASELINE MODELS - For comparison
+# ============================================================================
+
+def naive_forecast_baseline(y_train, y_test):
+    """
+    Naive forecast: Tomorrow = Today (persistence model).
+    This is the simplest baseline - any model should beat this.
+
+    Returns:
+        MAE of naive forecast
+    """
+    # Predict: next value = last training value
+    naive_pred = np.full(len(y_test), y_train[-1])
+    mae = mean_absolute_error(y_test, naive_pred)
+    return mae
+
+
+def moving_average_baseline(y_train, y_test, window=5):
+    """
+    Moving average baseline: Predict using MA of last N values.
+
+    Returns:
+        MAE of moving average forecast
+    """
+    # Use last 'window' values from training for prediction
+    ma_value = np.mean(y_train[-window:])
+    ma_pred = np.full(len(y_test), ma_value)
+    mae = mean_absolute_error(y_test, ma_pred)
+    return mae
+
+
+def calculate_directional_accuracy(y_true, y_pred):
+    """
+    Calculate accuracy of predicting price direction (up/down).
+    More important than MAE for trading strategies.
+
+    Returns:
+        Directional accuracy (0 to 1)
+    """
+    if len(y_true) < 2 or len(y_pred) < 2:
+        return 0.0
+
+    true_direction = np.sign(np.diff(y_true))
+    pred_direction = np.sign(np.diff(y_pred))
+
+    # Handle zeros (no change) as correct if both are zero
+    matches = (true_direction == pred_direction)
+    accuracy = np.mean(matches)
+
+    return accuracy
 
 
 def download_ticker_data_with_retry(ticker, period='max', max_retries=5, base_delay=10):
@@ -573,22 +715,82 @@ def process_ticker_data(ticker, data):
         return False
 
 
-# Create the dataset
+# Create the dataset - IMPROVED: supports multiple features
 def create_dataset(data, days_range=60):
-    X, y = [], []
-    for i in range(days_range, len(data)):
-        X.append(data[i - days_range:i, 0])
-        y.append(data[i, 0])
-    return np.array(X), np.array(y)
+    """
+    Create dataset with sliding windows.
 
-# Split the data into training and testing sets
+    Args:
+        data: Scaled data array, shape (n_samples, n_features)
+        days_range: Number of days to look back
+
+    Returns:
+        X: Input sequences, shape (n_samples, days_range, n_features)
+        y: Target values (closing prices), shape (n_samples,)
+    """
+    X, y = [], []
+    n_features = data.shape[1] if len(data.shape) > 1 else 1
+
+    for i in range(days_range, len(data)):
+        if n_features > 1:
+            X.append(data[i - days_range:i, :])  # All features
+            y.append(data[i, 3])  # Close price is index 3 in OHLCV
+        else:
+            X.append(data[i - days_range:i, 0])
+            y.append(data[i, 0])
+
+    X = np.array(X)
+    y = np.array(y)
+
+    # Reshape for single feature case
+    if n_features == 1 and len(X.shape) == 2:
+        X = np.reshape(X, (X.shape[0], X.shape[1], 1))
+
+    return X, y
+
+
+# IMPROVED: Split data BEFORE scaling to prevent data leakage
+def split_data_proper(data, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15):
+    """
+    Properly split time series data: train → val → test.
+    CRITICAL: Must split BEFORE scaling to prevent data leakage!
+
+    Args:
+        data: Raw data array (not scaled yet!)
+        train_ratio: Proportion for training (default 0.7)
+        val_ratio: Proportion for validation (default 0.15)
+        test_ratio: Proportion for testing (default 0.15)
+
+    Returns:
+        train_data, val_data, test_data: Split arrays
+    """
+    assert abs(train_ratio + val_ratio + test_ratio - 1.0) < 0.01, "Ratios must sum to 1"
+
+    n = len(data)
+    train_end = int(n * train_ratio)
+    val_end = int(n * (train_ratio + val_ratio))
+
+    train_data = data[:train_end]
+    val_data = data[train_end:val_end]
+    test_data = data[val_end:]
+
+    print(f"✅ Data split: Train={len(train_data)} ({train_ratio*100:.0f}%), "
+          f"Val={len(val_data)} ({val_ratio*100:.0f}%), "
+          f"Test={len(test_data)} ({test_ratio*100:.0f}%)")
+
+    return train_data, val_data, test_data
+
+
+# Legacy function - kept for backwards compatibility
 def split_data(X, y, train_size=0.8):
+    """Legacy split function - use split_data_proper for new code"""
     split = int(train_size * len(X))
     X_train, X_test = X[:split], X[split:]
     y_train, y_test = y[:split], y[split:]
 
     X_train, y_train = np.array(X_train), np.array(y_train)
-    X_train = np.reshape(X_train, (X_train.shape[0], X_train.shape[1], 1))
+    if len(X_train.shape) == 2:  # Single feature
+        X_train = np.reshape(X_train, (X_train.shape[0], X_train.shape[1], 1))
     return X_train, y_train, X_test, y_test
 
 def smape(X, y):
