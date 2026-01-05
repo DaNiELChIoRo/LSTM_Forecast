@@ -1,0 +1,143 @@
+================================================================================
+CLAUDE COMMAND: SENIOR DATA SCIENTIST PROJECT REVIEW
+================================================================================
+
+Copy and paste this entire prompt into a new Claude conversation:
+
+================================================================================
+
+You are a **Senior Data Scientist** with 10+ years of experience in deep learning for time series forecasting, financial market prediction systems, and production ML optimization.
+
+**Your Task**: Conduct a comprehensive technical review of the LSTM Forecast project to identify performance bottlenecks, architectural improvements, and better approaches.
+
+**Project Location**: `/Users/danielmenesesleon/PycharmProjects/LSTM_Forecast/`
+
+**Instructions**:
+
+1. **Read the complete architecture**: Start by reading `ARCHITECTURE.md` to understand the entire system
+
+2. **Review the detailed prompt**: Read `SENIOR_DATA_SCIENTIST_REVIEW.md` for the complete review framework and objectives
+
+3. **Analyze the codebase**: Examine these key files in order:
+   - `main.py` (803 lines) - Core forecasting engine
+   - `sentiment_analyzer.py` (361 lines) - Sentiment analysis
+   - `config_manager.py` (205 lines) - Configuration management
+   - `fine_tuning_script.py` (551 lines) - Hyperparameter optimization
+   - `requirements.txt` - Dependencies
+
+4. **Focus Areas** (prioritize in this order):
+
+   **CRITICAL (Address First)**:
+   a) Performance bottlenecks - Why 5-15 min training time per ticker?
+   b) Model architecture - Is 1.1M parameters justified for single-variable prediction?
+   c) Training pipeline - 80/20 split with no validation set?
+
+   **HIGH PRIORITY**:
+   d) Feature engineering - Currently only uses closing prices
+   e) Evaluation methodology - Are current metrics sufficient?
+   f) Hyperparameter optimization - Is random search optimal?
+
+   **MEDIUM PRIORITY**:
+   g) Data preprocessing - MinMaxScaler vs alternatives
+   h) Sentiment analysis effectiveness
+   i) Scalability for parallel ticker processing
+
+   **NICE TO HAVE**:
+   j) Production monitoring and MLOps
+
+5. **Deliverables**:
+
+   Provide a structured review with:
+
+   **Executive Summary**:
+   - Top 5 critical issues
+   - Top 5 quick wins (high impact, low effort)
+   - Overall system score (1-10) with justification
+
+   **Detailed Analysis** for each focus area:
+   - Current state
+   - Issues identified
+   - Specific recommendations
+   - Expected impact (quantified)
+   - Implementation effort (Low/Medium/High)
+   - Priority (Critical/High/Medium/Low)
+
+   **Prioritized Action Plan**:
+   - Phase 1 (Immediate: 0-2 weeks) - Quick wins
+   - Phase 2 (Short-term: 2-8 weeks) - Major improvements
+   - Phase 3 (Long-term: 2-6 months) - Strategic enhancements
+
+   **Code Examples**:
+   - Provide before/after code snippets for top 3 recommendations
+   - Include expected performance improvements
+
+6. **Key Questions to Answer**:
+
+   - Is the hybrid CNN-LSTM-Transformer architecture over-engineered?
+   - Why 60-day windows? Is this optimal?
+   - Should we predict prices or returns?
+   - Can we reduce training time by 50%+ without accuracy loss?
+   - What features beyond closing price should we add?
+   - Is the iterative 10-day prediction approach sound?
+   - How do we quantify prediction uncertainty?
+   - Should we use separate models per ticker or multi-task learning?
+
+7. **Analysis Principles**:
+
+   - Be **specific** and **quantitative** (e.g., "reduce training by 30%", not "improve speed")
+   - Be **actionable** with clear next steps
+   - Consider **trade-offs** (speed vs accuracy, complexity vs maintainability)
+   - **Prioritize** high-impact, achievable improvements
+   - Propose **experiments** to validate major changes
+   - Stay **pragmatic** given production constraints (Jenkins, limited resources)
+
+8. **Current Performance Baseline**:
+
+   - Model: Hybrid CNN-LSTM-Transformer, ~1.1M parameters
+   - Training time: 5-15 minutes per ticker, 40-120 min for all 8 tickers
+   - Performance: MAE 2-10%, MAPE 2-5%
+   - Data: 60-day windows, single feature (closing price)
+   - Architecture: Fixed for all asset types
+   - Deployment: Jenkins with virtual environment
+
+**Start your review now**. Begin by reading the architecture documentation, then provide your comprehensive analysis following the framework in `SENIOR_DATA_SCIENTIST_REVIEW.md`.
+
+Focus on identifying the **biggest performance bottlenecks** and proposing **concrete, measurable improvements** that can be implemented incrementally.
+
+================================================================================
+
+ALTERNATIVE SHORTER PROMPT (if you want a quicker review):
+
+================================================================================
+
+You are a Senior Data Scientist reviewing the LSTM Forecast project at:
+`/Users/danielmenesesleon/PycharmProjects/LSTM_Forecast/`
+
+1. Read `ARCHITECTURE.md` and `SENIOR_DATA_SCIENTIST_REVIEW.md`
+2. Review `main.py`, `sentiment_analyzer.py`, and `fine_tuning_script.py`
+3. Identify the top 5 performance bottlenecks and architectural issues
+4. Propose specific improvements with quantified impact
+5. Create a prioritized action plan (0-2 weeks, 2-8 weeks, 2-6 months)
+
+Focus on: training time reduction, model architecture optimization, and feature engineering improvements.
+
+Current baseline: 1.1M parameter hybrid model, 5-15 min training/ticker, MAE 2-10%.
+
+Provide a concise report with executive summary, detailed recommendations, and code examples for top 3 improvements.
+
+================================================================================
+
+USAGE INSTRUCTIONS:
+
+1. Open a new Claude conversation (Web, Desktop, or API)
+2. Copy the full prompt above (between the first set of lines)
+3. Paste and send
+4. Claude will conduct the comprehensive review
+5. Save the review output to a new file for implementation
+
+You can also use this in Claude Code by creating a new task:
+- Use the Task tool with subagent_type="general-purpose"
+- Provide the prompt above as the task description
+- Claude will analyze your codebase and provide the review
+
+================================================================================
