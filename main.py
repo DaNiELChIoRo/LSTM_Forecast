@@ -607,9 +607,11 @@ def process_ticker_data(ticker, data):
         # Load optimized configuration for this ticker
         config_loaded = load_optimized_config_for_ticker(ticker)
         
-        # Normalize the data
+        # Normalize the data - use only Close prices for model consistency
+        # The model architecture and prediction pipeline expect single-feature input
         scaler = MinMaxScaler(feature_range=(0, 1))
-        scaled_data = scaler.fit_transform(data)
+        close_data = data[['Close']].values
+        scaled_data = scaler.fit_transform(close_data)
 
         mae = None
         rmse = None
@@ -989,7 +991,26 @@ def load_model_and_scaler(ticker):
             return None, None, None
         
         # Load model and scaler
-        model = load_model(model_path)
+        # Use compile=False for version compatibility, then recompile
+        model = load_model(model_path, compile=False)
+        
+        # Recompile the model with the same optimizer settings
+        architecture_type = ARCHITECTURE_CONFIG.get('type', 'hybrid')
+        if architecture_type in ['hybrid', 'transformer_only']:
+            from keras.optimizers import AdamW
+            optimizer = AdamW(
+                learning_rate=ARCHITECTURE_CONFIG.get('learning_rate', 0.001),
+                weight_decay=ARCHITECTURE_CONFIG.get('weight_decay', 0.01)
+            )
+        else:
+            optimizer = 'adam'
+        
+        model.compile(
+            optimizer=optimizer,
+            loss='mean_squared_error',
+            metrics=['mean_absolute_error', 'mean_squared_error']
+        )
+        
         with open(scaler_path, 'rb') as f:
             scaler = pickle.load(f)
         
